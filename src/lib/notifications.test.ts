@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { autopayRules, bills, defaultSettings, expiries, subscriptions, supplierConnections } from "@/data/mockFamilyData";
 import { buildNotifications, findMissingBill, missingBillMonth, usualIssueDay, type NotificationInput } from "@/lib/notifications";
 import { buildEvents, type LedgerData } from "@/lib/payments";
-import type { Bill, DisputeTicket, SupplierConnection } from "@/types/pago";
+import type { AutopayLogEntry, AutopayRule, Bill, DisputeTicket, SupplierConnection } from "@/types/pago";
 
 const ticket: DisputeTicket = {
   id: "tkt-1",
@@ -22,9 +22,10 @@ function withElectrica(patch: Partial<Bill>): Bill[] {
   return bills.map((b) => (b.id === "bill-electrica" ? { ...b, ...patch } : b));
 }
 
-function notificationsFor(patch: Partial<NotificationInput> & { bills?: Bill[]; tickets?: DisputeTicket[] }) {
-  const ledger: LedgerData = { bills: patch.bills ?? bills, subscriptions, expiries, payments: [], tickets: patch.tickets ?? [], autopay: autopayRules };
-  const houseId = patch.houseId ?? "acasa";
+function notificationsFor(patch: Partial<NotificationInput> & { bills?: Bill[]; tickets?: DisputeTicket[]; autopay?: AutopayRule[] }) {
+  const { autopay = autopayRules, ...input } = patch;
+  const ledger: LedgerData = { bills: input.bills ?? bills, subscriptions, expiries, payments: [], tickets: input.tickets ?? [], autopay };
+  const houseId = input.houseId ?? "acasa";
   return buildNotifications({
     houseId,
     events: buildEvents(ledger, houseId, 2026),
@@ -36,7 +37,7 @@ function notificationsFor(patch: Partial<NotificationInput> & { bills?: Bill[]; 
     tickets: ledger.tickets,
     readings: [],
     settings: defaultSettings,
-    ...patch,
+    ...input,
   });
 }
 
@@ -55,6 +56,51 @@ describe("dispute notifications", () => {
     expect(storno).toMatchObject({ tone: "success", title: "Electrica Furnizare a emis factura storno", date: "2026-11-16", href: "/facturi/bill-electrica" });
     expect(storno?.body).toContain("Ai economisit 1.469 RON");
     expect(list.some((n) => n.body.includes("rămân înghețați"))).toBe(false);
+  });
+});
+
+describe("autopay notifications", () => {
+  const lowLimit: AutopayRule[] = autopayRules.map((r) => (r.targetId === "sub-spotify" ? { ...r, maxAmount: 30 } : r));
+  const skipped: AutopayLogEntry = {
+    id: "log-skip-sub-spotify-2026-11",
+    targetId: "sub-spotify",
+    at: "2026-11-16T09:00:00",
+    text: "Plata automată pentru Spotify Family nu s-a făcut.",
+    kind: "skipped",
+    eventId: "sub-spotify-2026-11",
+  };
+
+  it("announces the automatic payment due today", () => {
+    const today = notificationsFor({}).find((n) => n.id === "auto-sub-spotify-2026-11");
+    expect(today?.body).toContain("39,99 RON se plătesc automat pe 16 nov");
+  });
+
+  it("warns ahead when the amount is above the limit", () => {
+    const ids = notificationsFor({ autopay: lowLimit }).map((n) => n.id);
+    expect(ids).toContain("autoblock-sub-spotify-2026-11");
+    expect(ids).not.toContain("auto-sub-spotify-2026-11");
+    expect(ids).not.toContain("autoskip-sub-spotify-2026-11");
+  });
+
+  it("asks for confirmation once autopay has skipped the payment", () => {
+    const list = notificationsFor({ autopay: lowLimit, autopayLog: [skipped] });
+    const note = list.find((n) => n.id === "autoskip-sub-spotify-2026-11");
+    expect(note).toMatchObject({ tone: "warning", title: "Plata automată nu s-a făcut: Spotify Family", date: "2026-11-16", href: "/abonamente/sub-spotify" });
+    expect(note?.body).toContain("depășește limita ta de 30 RON");
+    expect(note?.body).toContain("Confirmă plata");
+    expect(list.some((n) => n.id === "autoblock-sub-spotify-2026-11")).toBe(false);
+  });
+
+  it("mentions the card when a valid limit was not the problem", () => {
+    const note = notificationsFor({ autopayLog: [skipped] }).find((n) => n.id === "autoskip-sub-spotify-2026-11");
+    expect(note?.body).toContain("Cardul ales pentru plata automată nu mai e valabil");
+  });
+
+  it("explains that a suspicious bill is not paid automatically", () => {
+    const rules: AutopayRule[] = [...autopayRules, { targetId: "bill-electrica", targetKind: "bill", enabled: true, maxAmount: 2000, methodId: "pm-visa", noticeDays: 3, createdAt: "2026-11-16T10:00:00" }];
+    const note = notificationsFor({ autopay: rules, today: "2026-11-20" }).find((n) => n.id === "autoblock-bill-electrica-2026-11");
+    expect(note?.body).toContain("pare greșită");
+    expect(notificationsFor({ today: "2026-11-20" }).some((n) => n.id === "autoblock-bill-electrica-2026-11")).toBe(false);
   });
 });
 

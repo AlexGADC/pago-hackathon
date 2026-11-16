@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ChevronRight, ShieldCheck, Zap } from "lucide-react";
+import { PaymentStatusTag } from "@/components/payments/PaymentStatus";
+import { ReceiptSheet } from "@/components/payments/ReceiptSheet";
 import { CategoryBadge } from "@/components/shared/Badges";
 import { Card, SectionTitle } from "@/components/shared/Card";
 import { InfoNote, Toggle } from "@/components/shared/Controls";
@@ -14,7 +17,8 @@ import { daysLabel, fmtDateTime, plural } from "@/lib/format";
 import type { AutopayRule } from "@/types/pago";
 
 export function AutopayScreen() {
-  const { autopay, autopayLog, methods, bills, subscriptions, expiries, house, saveAutopay, disableAutopay, toast } = useFamily();
+  const { autopay, autopayLog, methods, bills, subscriptions, expiries, payments, house, saveAutopay, disableAutopay, toast } = useFamily();
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const source = { bills, subscriptions, expiries };
   const rules = autopay
     .map((rule) => ({ rule, target: resolveTarget(source, rule.targetId) }))
@@ -26,6 +30,11 @@ export function AutopayScreen() {
     ...subscriptions.filter((s) => s.houseId === house.id && s.status === "activ" && !covered.includes(s.id)).map((s) => resolveTarget(source, s.id)),
   ].filter((t): t is TargetInfo => t !== null);
   const log = [...autopayLog].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
+  const executed = payments
+    .filter((p) => p.auto)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5);
+  const receipt = payments.find((p) => p.id === receiptId) ?? null;
 
   function toggle(rule: AutopayRule, target: TargetInfo, enabled: boolean) {
     if (enabled) {
@@ -79,6 +88,29 @@ export function AutopayScreen() {
         </>
       )}
 
+      {executed.length > 0 && (
+        <>
+          <SectionTitle>Plătite automat</SectionTitle>
+          <Card className="flex flex-col divide-y divide-line">
+            {executed.map((p) => (
+              <button key={p.id} onClick={() => setReceiptId(p.id)} className="flex min-h-14 items-center gap-3 py-2.5 text-left first:pt-0 last:pb-0">
+                <CategoryBadge category={p.category} filled={p.status === "confirmata"} size="lg" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-ink">{p.title}</span>
+                  <span className="block truncate text-xs text-muted">
+                    {fmtDateTime(p.createdAt)} · {p.methodLabel}
+                  </span>
+                </span>
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`font-bold ${p.status === "esuata" ? "text-muted line-through" : "text-ink"}`}>{fmtRon(p.amount)}</span>
+                  <PaymentStatusTag status={p.status} />
+                </span>
+              </button>
+            ))}
+          </Card>
+        </>
+      )}
+
       {suggestions.length > 0 && (
         <>
           <SectionTitle>Poți activa și pentru</SectionTitle>
@@ -104,7 +136,7 @@ export function AutopayScreen() {
 
       {log.length > 0 && (
         <>
-          <SectionTitle>Jurnalul acordurilor tale</SectionTitle>
+          <SectionTitle>Jurnalul plăților automate</SectionTitle>
           <Card>
             <ul className="flex flex-col divide-y divide-line">
               {log.map((entry) => (
@@ -117,6 +149,8 @@ export function AutopayScreen() {
           </Card>
         </>
       )}
+
+      {receipt && <ReceiptSheet record={receipt} onClose={() => setReceiptId(null)} />}
     </div>
   );
 }

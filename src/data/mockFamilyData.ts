@@ -241,7 +241,7 @@ export const subscriptions: Subscription[] = [
     name: "Spotify Family",
     price: 39.99,
     cycle: "monthly",
-    renewsOn: "2026-11-28",
+    renewsOn: "2026-11-16",
     category: "muzica",
     status: "activ",
     lastUsedDaysAgo: 0,

@@ -34,7 +34,7 @@ import type {
 } from "@/types/pago";
 
 export const STORAGE_KEY = "pago-home-family:v2";
-export const STATE_VERSION = 3;
+export const STATE_VERSION = 4;
 
 export interface AppState {
   version: number;

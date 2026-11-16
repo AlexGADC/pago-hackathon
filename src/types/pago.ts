@@ -222,11 +222,15 @@ export interface AutopayRule {
   createdAt: string;
 }
 
+export type AutopayLogKind = "consent" | "paid" | "skipped";
+
 export interface AutopayLogEntry {
   id: string;
   targetId: string;
   at: string;
   text: string;
+  kind?: AutopayLogKind;
+  eventId?: string;
 }
 
 export interface NotificationChannels {

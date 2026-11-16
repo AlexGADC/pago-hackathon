@@ -3,7 +3,7 @@ import { MONTHS, addDays, addMonths, dateParts, daysInMonth, daysLabel, fmtDay, 
 import { eventState, eventsInMonth, splitPaid, type PaymentEvent } from "@/lib/payments";
 import { dueReminders, reminderLabel } from "@/lib/reminders";
 import { isUnused, priceIncrease, trialDaysLeft, yearlyCost } from "@/lib/subscriptions";
-import type { Bill, DisputeTicket, ExpiryItem, HouseId, MeterSubmission, PaymentRecord, Settings, Subscription, SupplierConnection } from "@/types/pago";
+import type { AutopayLogEntry, Bill, DisputeTicket, ExpiryItem, HouseId, MeterSubmission, PaymentRecord, Settings, Subscription, SupplierConnection } from "@/types/pago";
 
 export type NotificationTone = "alert" | "warning" | "info" | "success";
 
@@ -30,6 +30,7 @@ export interface NotificationInput {
   tickets: DisputeTicket[];
   readings: MeterSubmission[];
   settings: Settings;
+  autopayLog?: AutopayLogEntry[];
   today?: string;
 }
 
@@ -76,6 +77,14 @@ export function selfReadingOpen(bill: Bill, today: string = DEMO_TODAY): boolean
   if (!bill.selfReading || !bill.meter) return false;
   const day = Number(today.slice(8, 10));
   return day >= bill.selfReading.fromDay && day <= bill.selfReading.toDay;
+}
+
+function autopaySkipBody(event: PaymentEvent): string {
+  if (event.flagged) return "Factura pare greșită, așa că nu am plătit-o automat. Verific-o și confirmă plata doar dacă e corectă.";
+  if (event.autopayLimit !== undefined && event.amount > event.autopayLimit) {
+    return `Suma de ${fmtRon(event.amount)} depășește limita ta de ${fmtRon(event.autopayLimit)}. Confirmă plata din aplicație dacă suma e corectă.`;
+  }
+  return "Cardul ales pentru plata automată nu mai e valabil. Alege alt card și confirmă plata.";
 }
 
 export function buildNotifications(input: NotificationInput): AppNotification[] {
@@ -137,9 +146,41 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
 
   const trialTargets = subs.filter((s) => trialDaysLeft(s, today) !== null).map((s) => s.id);
 
+  const skipped = new Map<string, AutopayLogEntry>();
+  for (const entry of input.autopayLog ?? []) {
+    if (entry.kind === "skipped" && entry.eventId) skipped.set(entry.eventId, entry);
+  }
+
   for (const r of dueReminders(input.events, today, input.settings.reminderDays)) {
     const e = r.event;
-    if (r.kind === "flagged" || trialTargets.includes(e.targetId)) continue;
+    const skip = skipped.get(e.id);
+    if (skip && !r.overdue) {
+      list.push({
+        id: `autoskip-${e.id}`,
+        tone: "warning",
+        icon: "shield",
+        title: `Plata automată nu s-a făcut: ${e.title}`,
+        body: autopaySkipBody(e),
+        date: skip.at.slice(0, 10),
+        href: e.href,
+      });
+      continue;
+    }
+    if (r.kind === "flagged") {
+      if (e.autopay === "blocked") {
+        list.push({
+          id: `autoblock-${e.id}`,
+          tone: "warning",
+          icon: "shield",
+          title: `Plata automată s-a oprit: ${e.title}`,
+          body: "Factura pare greșită, așa că nu o plătim automat. Verific-o și decide tu.",
+          date: today,
+          href: e.href,
+        });
+      }
+      continue;
+    }
+    if (trialTargets.includes(e.targetId)) continue;
     if (r.kind === "auto") {
       if (r.daysLeft > (e.autopayNotice ?? 3)) continue;
       list.push({
