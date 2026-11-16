@@ -6,8 +6,8 @@ import type { Bill, ExpiryItem, FamilyMember, House, Mission, MonthlyAmount, Poo
 export const FAMILY_NAME = "Familia Popescu";
 
 export const houses: House[] = [
-  { id: "acasa", name: "Casa Noastră", emoji: "🏠", address: "Str. Lalelelor 12, Cluj-Napoca" },
-  { id: "bunici", name: "Casa Bunicilor", emoji: "👵", address: "Str. Morii 4, Turda" },
+  { id: "acasa", name: "Casa Noastră", emoji: "🏠", address: "Str. Lalelelor 12, Cluj-Napoca", avatar: "/avatars/acasa.svg" },
+  { id: "bunici", name: "Casa Bunicilor", emoji: "👵", address: "Str. Morii 4, Turda", avatar: "/avatars/bunici.svg" },
 ];
 
 function history(base: number, jitter: number[]): MonthlyAmount[] {
@@ -164,11 +164,14 @@ export const subscriptions: Subscription[] = [
   { id: "sub-sala", houseId: "acasa", name: "Sală 18GYM", monthlyPrice: 149, renewsOn: "2026-12-01" },
   { id: "sub-tv-bunici", houseId: "bunici", name: "Digi TV", monthlyPrice: 35, renewsOn: "2026-11-25" },
   { id: "sub-disney", houseId: "acasa", name: "Disney+", monthlyPrice: 34.99, renewsOn: "2026-11-27" },
+  { id: "sub-dropbox", houseId: "acasa", name: "Dropbox", monthlyPrice: 39, renewsOn: "2026-11-09" },
+  { id: "sub-chatgpt", houseId: "acasa", name: "ChatGPT Plus", monthlyPrice: 100, renewsOn: "2026-04-05", billing: "yearly" },
+  { id: "sub-amazon", houseId: "acasa", name: "Amazon Prime", monthlyPrice: 15, renewsOn: "2026-09-14", billing: "yearly" },
 ];
 
 export const expiries: ExpiryItem[] = [
-  { id: "exp-rca-logan", houseId: "acasa", kind: "RCA", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2026-11-29" },
-  { id: "exp-rov-logan", houseId: "acasa", kind: "Rovinietă", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-01-14" },
-  { id: "exp-itp-logan", houseId: "acasa", kind: "ITP", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-04-02" },
-  { id: "exp-rca-bunici", houseId: "bunici", kind: "RCA", vehicle: "Renault Clio · CJ-55-MRA", expiresOn: "2026-11-24" },
+  { id: "exp-rca-logan", houseId: "acasa", kind: "RCA", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2026-11-29", price: 1150 },
+  { id: "exp-rov-logan", houseId: "acasa", kind: "Rovinietă", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-01-14", price: 110 },
+  { id: "exp-itp-logan", houseId: "acasa", kind: "ITP", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-04-02", price: 140 },
+  { id: "exp-rca-bunici", houseId: "bunici", kind: "RCA", vehicle: "Renault Clio · CJ-55-MRA", expiresOn: "2026-11-24", price: 980 },
 ];

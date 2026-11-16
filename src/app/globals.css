@@ -4,6 +4,11 @@
    Folosiți tokens: bg-pago-blue, text-ink, text-muted, bg-app, rounded-card, shadow-card,
    plus utilitarele de mai jos: bg-hero, bg-card-gradient, glass, btn-dark, btn-blue, tag-*. */
 @theme {
+  /* Categorii (pastel) */
+  --color-cat-blue: #4c8df6;
+  --color-cat-red: #ff5d73;
+  --color-cat-green: #20c997;
+
   /* Culori de brand */
   --color-pago-blue: #0066ff;
   --color-pago-blue-dark: #0047cc;

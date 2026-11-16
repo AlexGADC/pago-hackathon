@@ -7,6 +7,7 @@ export interface House {
   name: string; // "Casa Noastră"
   emoji: string; // "🏠"
   address: string;
+  avatar: string; // cale în public/avatars
 }
 
 export type UtilityKind = "curent" | "gaz" | "apa" | "salubritate" | "telecom" | "intretinere";
@@ -112,6 +113,7 @@ export interface Subscription {
   previousPrice?: number; // dacă s-a scumpit
   renewsOn: string; // ISO
   trialEndsOn?: string; // ISO, dacă e Free Trial
+  billing?: "monthly" | "yearly"; // implicit lunar; anual = o plată pe an de monthlyPrice × 12
 }
 
 export type ExpiryKind = "RCA" | "Rovinietă" | "ITP";
@@ -122,6 +124,7 @@ export interface ExpiryItem {
   kind: ExpiryKind;
   vehicle: string; // "Dacia Logan B-123-POP"
   expiresOn: string; // ISO
+  price: number; // RON, costul anual
 }
 
 // ---------- Validare index (Flux A) ----------

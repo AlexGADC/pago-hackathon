@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Radar, ReceiptText, Users } from "lucide-react";
+import { CreditCard, House, ReceiptText, ShieldCheck } from "lucide-react";
 
 const TABS = [
   { href: "/", label: "Acasă", Icon: House },
   { href: "/facturi", label: "Facturi", Icon: ReceiptText },
-  { href: "/familie", label: "Familie", Icon: Users },
-  { href: "/radar", label: "Radar", Icon: Radar },
+  { href: "/abonamente", label: "Abonamente", Icon: CreditCard },
+  { href: "/asigurari", label: "Asigurări", Icon: ShieldCheck },
 ] as const;
 
 export function BottomNav() {
