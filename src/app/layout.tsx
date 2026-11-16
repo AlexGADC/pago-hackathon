@@ -3,15 +3,13 @@ import "./globals.css";
 import { FamilyProvider } from "@/context/FamilyContext";
 import { PhoneFrame } from "@/components/layout/PhoneFrame";
 
-// Fără next/font/google: fontul de sistem merge și fără internet pe scenă.
-
 export const metadata: Metadata = {
   title: "Pago Home & Family",
-  description: "Centrul de comandă al casei și familiei — hackathon MVP",
+  description: "Toate plățile casei într-un singur loc: facturi, abonamente, asigurări și plăți rapide.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0066FF",
+  themeColor: "#2f7d52",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

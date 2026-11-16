@@ -1,7 +1,7 @@
+import type { TagTone } from "@/components/shared/Card";
 import type { BillStatus } from "@/types/pago";
 
-/** Eticheta + tonul pastilei pentru fiecare status de factură (folosit în listă și în detaliu). */
-export const BILL_STATUS: Record<BillStatus, { label: string; tone: "blue" | "red" | "green" | "indigo" }> = {
+export const BILL_STATUS: Record<BillStatus, { label: string; tone: TagTone }> = {
   normala: { label: "✅ Normală", tone: "blue" },
   red_flag: { label: "🚨 Red Flag", tone: "red" },
   contestata: { label: "📨 Contestată", tone: "indigo" },

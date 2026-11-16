@@ -1,37 +1,36 @@
 "use client";
 
-
 import { CheckCircle2, FileText, Snowflake } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";
-import { POINTS } from "@/data/mockFamilyData";
 import { fmtRon, legalDeadlineDays } from "@/lib/disputes";
+import { daysLabel, demoNow, fmtDate, uniqueId } from "@/lib/format";
 import type { Bill, DisputeTicket } from "@/types/pago";
 
 const CONFIDENCE = "Confirmat de client (fără contor)" as const;
 
-/** `onSent` e apelat după trimitere: factura iese din „red_flag”, deci părintele afișează confirmarea. */
 export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: DisputeTicket) => void }) {
-  const { submitDispute, addPoints } = useFamily();
-  const anomaly = bill.anomaly!;
-  const correctAmount = anomaly.expectedAmount;
-  const disputedAmount = bill.amount - correctAmount;
-  const suspicious = anomaly.suspiciousLines ?? [];
+  const { submitDispute } = useFamily();
 
-  // Liniile „din PDF”: cele suspecte (marcate) între câteva linii obișnuite ale facturii.
+  if (!bill.anomaly) return null;
+
+  const correctAmount = bill.anomaly.expectedAmount;
+  const disputedAmount = bill.amount - correctAmount;
+  const suspicious = bill.anomaly.suspiciousLines ?? [];
+
   const pdfLines: { text: string; flagged: boolean }[] = [
     { text: `Factura ${bill.invoiceNumber} · Cod client ${bill.clientCode}`, flagged: false },
-    { text: `Emisă la ${new Date(bill.issueDate).toLocaleDateString("ro-RO")}`, flagged: false },
+    { text: `Emisă la ${fmtDate(bill.issueDate)}`, flagged: false },
     ...suspicious.map((text) => ({ text, flagged: true })),
     { text: `Total de plată: ${fmtRon(bill.amount)}`, flagged: false },
   ];
 
   function confirm() {
     const ticket: DisputeTicket = {
-      id: `tkt-${bill.id}-${Date.now()}`,
+      id: uniqueId(`tkt-${bill.id}`),
       billId: bill.id,
       houseId: bill.houseId,
-      createdAt: new Date().toISOString(),
+      createdAt: demoNow(),
       stage: "trimisa",
       legalDeadlineDays: legalDeadlineDays(bill),
       confidence: CONFIDENCE,
@@ -40,10 +39,9 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       message:
         `Către ${bill.provider}: contest factura ${bill.invoiceNumber} (cod client ${bill.clientCode}). ` +
         `Pe factură apare „${suspicious[0] ?? "o linie greșită"}”, ceea ce nu corespunde situației reale. ` +
-        `Am achitat suma corectă de ${fmtRon(correctAmount)} și solicit emiterea facturii storno pentru diferența de ${fmtRon(disputedAmount)}.`,
+        `Achit suma corectă de ${fmtRon(correctAmount)} și solicit emiterea facturii storno pentru diferența de ${fmtRon(disputedAmount)}.`,
     };
     submitDispute(ticket);
-    addPoints(POINTS.bounty);
     onSent(ticket);
   }
 
@@ -52,7 +50,6 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       <h2 className="text-lg font-bold text-ink">Am găsit greșeala în factură</h2>
       <p className="mt-1 text-sm text-muted">Uită-te doar la linia marcată.</p>
 
-      
       <div className="mt-4 rounded-2xl border border-line bg-surface-2 p-4">
         <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted">
           <FileText size={14} /> Din PDF-ul facturii {bill.provider}
@@ -70,7 +67,6 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
         </ul>
       </div>
 
-      {/* Rezumat: cât plătești acum și cât se îngheață */}
       <div className="mt-4 rounded-2xl bg-surface-2 p-4">
         <Tag tone="blue">✨ Linie suspectă detectată</Tag>
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -86,7 +82,7 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
           </div>
         </div>
         <p className="mt-3 text-xs text-muted">
-          Diferența rămâne înghețată până când {bill.provider} emite factura storno (răspuns legal în max. {legalDeadlineDays(bill)} zile).
+          Diferența rămâne înghețată până când {bill.provider} emite factura storno (răspuns legal în max. {daysLabel(legalDeadlineDays(bill))}).
         </p>
         <button onClick={confirm} className="btn-dark mt-4 w-full">
           <CheckCircle2 size={18} /> Da, e greșit · Plătește {fmtRon(correctAmount)}
