@@ -42,11 +42,18 @@ function notificationsFor(patch: Partial<NotificationInput> & { bills?: Bill[]; 
 }
 
 describe("dispute notifications", () => {
-  it("says the difference stays frozen while the supplier analyses the dispute", () => {
+  it("says a suspension was requested while the supplier analyses the dispute", () => {
     const list = notificationsFor({ bills: withElectrica({ status: "platita_partial" }), tickets: [ticket] });
     const open = list.find((n) => n.id === "ticket-tkt-1-in_analiza");
     expect(open?.title).toBe("Electrica Furnizare analizează sesizarea ta");
-    expect(open?.body).toContain("1.469 RON rămân înghețați");
+    expect(open?.body).toBe("Ai cerut suspendarea plății pentru 1.469 RON până la soluționarea sesizării. Termen legal de răspuns: 15 zile lucrătoare.");
+    expect(list.some((n) => /îngheț/i.test(n.body))).toBe(false);
+  });
+
+  it("keeps the calendar-day term for bills that are not energy", () => {
+    const retim: DisputeTicket = { ...ticket, id: "tkt-2", billId: "bill-retim", houseId: "bunici", legalDeadlineDays: 30, disputedAmount: 65, paidAmount: 45 };
+    const list = notificationsFor({ houseId: "bunici", bills: bills.map((b) => (b.id === "bill-retim" ? { ...b, status: "platita_partial" as const } : b)), tickets: [retim] });
+    expect(list.find((n) => n.id === "ticket-tkt-2-in_analiza")?.body).toContain("Termen legal de răspuns: 30 de zile.");
   });
 
   it("announces the storno invoice and the amount saved", () => {
@@ -55,7 +62,7 @@ describe("dispute notifications", () => {
     const storno = list.find((n) => n.id === "ticket-tkt-1-stornata");
     expect(storno).toMatchObject({ tone: "success", title: "Electrica Furnizare a emis factura storno", date: "2026-11-16", href: "/facturi/bill-electrica" });
     expect(storno?.body).toContain("Ai economisit 1.469 RON");
-    expect(list.some((n) => n.body.includes("rămân înghețați"))).toBe(false);
+    expect(list.some((n) => n.body.includes("suspendarea plății"))).toBe(false);
   });
 });
 

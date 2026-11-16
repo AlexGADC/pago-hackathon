@@ -1,18 +1,22 @@
-import { CheckCircle2, Snowflake } from "lucide-react";
+import { CheckCircle2, Hourglass } from "lucide-react";
 import { Step } from "@/components/payments/PaymentStatus";
 import { Card, Tag } from "@/components/shared/Card";
-import { fmtRon } from "@/lib/disputes";
-import { addDays, daysLabel, fmtDate, fmtDateTime } from "@/lib/format";
-import type { DisputeTicket } from "@/types/pago";
+import { fmtRon, hasWorkingDayDeadline, legalDeadlineLabel } from "@/lib/disputes";
+import { addDays, fmtDate, fmtDateTime } from "@/lib/format";
+import type { Bill, DisputeTicket } from "@/types/pago";
 
-export function TicketTracker({ ticket, provider }: { ticket: DisputeTicket; provider: string }) {
+export function TicketTracker({ ticket, bill }: { ticket: DisputeTicket; bill: Bill }) {
+  const provider = bill.provider;
   const analysing = ticket.stage === "in_analiza" || ticket.stage === "stornata";
   const closed = ticket.stage === "stornata";
-  const deadline = addDays(ticket.createdAt.slice(0, 10), ticket.legalDeadlineDays);
+  const term = legalDeadlineLabel(bill);
+  const deadline = hasWorkingDayDeadline(bill)
+    ? `Termen legal de răspuns: ${term} de la trimitere.`
+    : `Termen legal de răspuns: ${fmtDate(addDays(ticket.createdAt.slice(0, 10), ticket.legalDeadlineDays))} (${term}).`;
 
   return (
     <Card>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <p className="font-bold text-ink">Starea contestației</p>
         {closed ? (
           <Tag tone="green">
@@ -20,17 +24,13 @@ export function TicketTracker({ ticket, provider }: { ticket: DisputeTicket; pro
           </Tag>
         ) : (
           <Tag tone="indigo">
-            <Snowflake size={11} /> {fmtRon(ticket.disputedAmount)} înghețați
+            <Hourglass size={11} /> Suspendare cerută: {fmtRon(ticket.disputedAmount)}
           </Tag>
         )}
       </div>
       <ol className="mt-4">
         <Step state="done" title="Sesizare trimisă" detail={`${fmtDateTime(ticket.createdAt)} · ${ticket.confidence}`} />
-        <Step
-          state={analysing ? "done" : "active"}
-          title={`În analiză la ${provider}`}
-          detail={analysing ? `Termen legal de răspuns: ${fmtDate(deadline)} (${daysLabel(ticket.legalDeadlineDays)}).` : "Furnizorul preia sesizarea…"}
-        />
+        <Step state={analysing ? "done" : "active"} title={`În analiză la ${provider}`} detail={analysing ? deadline : "Furnizorul preia sesizarea…"} />
         <Step
           state={closed ? "done" : analysing ? "active" : "todo"}
           title="Factură stornată"

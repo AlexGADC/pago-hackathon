@@ -1,4 +1,4 @@
-import { DEMO_TODAY, daysUntil, fmtRon, percentOverAverage } from "@/lib/disputes";
+import { DEMO_TODAY, daysUntil, fmtRon, legalDeadlineLabel, percentOverAverage } from "@/lib/disputes";
 import { MONTHS, addDays, addMonths, dateParts, daysInMonth, daysLabel, fmtDay, toIso } from "@/lib/format";
 import { eventState, eventsInMonth, splitPaid, type PaymentEvent } from "@/lib/payments";
 import { dueReminders, reminderLabel } from "@/lib/reminders";
@@ -320,7 +320,7 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
       tone: "info",
       icon: "mail",
       title: t.stage === "trimisa" ? `Sesizare trimisă către ${bill?.provider ?? "furnizor"}` : `${bill?.provider ?? "Furnizorul"} analizează sesizarea ta`,
-      body: `${fmtRon(t.disputedAmount)} rămân înghețați. Termen legal de răspuns: ${daysLabel(t.legalDeadlineDays)}.`,
+      body: `Ai cerut suspendarea plății pentru ${fmtRon(t.disputedAmount)} până la soluționarea sesizării. Termen legal de răspuns: ${bill ? legalDeadlineLabel(bill) : daysLabel(t.legalDeadlineDays)}.`,
       date: t.createdAt.slice(0, 10),
       href: `/facturi/${t.billId}`,
     });

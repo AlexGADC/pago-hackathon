@@ -18,7 +18,7 @@ export function eventSubtitle(event: PaymentEvent, today: string, showDate: bool
   else if (state === "auto") parts.push("se plătește automat");
   else if (state === "estimated") parts.push("factura nu a fost emisă încă");
   else if (isOverdue(event, today)) parts.push("întârziată");
-  if (event.frozen > 0) parts.push(`${fmtRon(event.frozen)} înghețați`);
+  if (event.frozen > 0) parts.push(`${fmtRon(event.frozen)} contestați`);
   return parts.join(" · ");
 }
 

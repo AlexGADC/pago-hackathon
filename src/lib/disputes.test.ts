@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bills } from "@/data/mockFamilyData";
-import { DEMO_TODAY, daysUntil, legalDeadlineDays, percentOverAverage, validateIndex } from "@/lib/disputes";
+import { DEMO_TODAY, DISPUTE_REQUEST, daysUntil, disputeRequest, hasWorkingDayDeadline, legalDeadlineDays, legalDeadlineLabel, percentOverAverage, validateIndex } from "@/lib/disputes";
 
 const electrica = bills.find((b) => b.id === "bill-electrica")!;
 const digi = bills.find((b) => b.id === "bill-digi")!;
@@ -36,6 +36,40 @@ describe("legalDeadlineDays", () => {
 
   it("gives 15 days for the other bills", () => {
     expect(legalDeadlineDays({ ...electrica, kind: "curent" })).toBe(15);
+  });
+});
+
+describe("legalDeadlineLabel", () => {
+  it("counts working days for electricity and gas", () => {
+    expect(legalDeadlineLabel({ ...electrica, kind: "curent" })).toBe("15 zile lucrătoare");
+    expect(legalDeadlineLabel({ ...electrica, kind: "gaz" })).toBe("15 zile lucrătoare");
+    expect(hasWorkingDayDeadline({ ...electrica, kind: "gaz" })).toBe(true);
+  });
+
+  it("keeps the existing calendar-day terms for the other bills", () => {
+    expect(legalDeadlineLabel({ ...electrica, kind: "apa" })).toBe("15 zile");
+    expect(legalDeadlineLabel({ ...electrica, kind: "intretinere" })).toBe("15 zile");
+    expect(legalDeadlineLabel({ ...electrica, kind: "telecom" })).toBe("30 de zile");
+    expect(legalDeadlineLabel({ ...electrica, kind: "salubritate" })).toBe("30 de zile");
+    expect(hasWorkingDayDeadline({ ...electrica, kind: "salubritate" })).toBe(false);
+  });
+});
+
+describe("disputeRequest", () => {
+  it("asks to suspend the difference instead of promising it will not be paid", () => {
+    const text = disputeRequest(11, 1469);
+    expect(text.startsWith(DISPUTE_REQUEST)).toBe(true);
+    expect(DISPUTE_REQUEST).toBe("Am achitat suma necontestată și solicit suspendarea plății diferenței până la soluționarea sesizării.");
+    expect(text).toContain("Suma achitată: 11 RON.");
+    expect(text).toContain("Diferența contestată: 1.469 RON");
+    expect(text).not.toMatch(/îngheț/i);
+  });
+
+  it("does not claim a payment when the whole amount is disputed", () => {
+    const text = disputeRequest(0, 1480);
+    expect(text).not.toContain("Am achitat");
+    expect(text).toContain("Contest întreaga sumă de 1.480 RON");
+    expect(text).toContain("suspendarea plății");
   });
 });
 

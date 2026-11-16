@@ -171,7 +171,9 @@ export function HomeScreen() {
             ))}
           </ul>
         )}
-        {summary.frozen > 0 && <p className="mt-3 text-xs text-muted">❄️ {fmtRon(summary.frozen)} sunt înghețați până la factura storno și nu intră în total.</p>}
+        {summary.frozen > 0 && (
+          <p className="mt-3 text-xs text-muted">⏳ Pentru {fmtRon(summary.frozen)} ai cerut suspendarea plății până la soluționarea sesizării. Suma nu intră în total.</p>
+        )}
       </section>
 
       {openDate && <DaySheet date={openDate} events={eventsOnDay(events, openDate)} onClose={() => setOpenDate(null)} />}

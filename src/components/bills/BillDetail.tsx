@@ -141,7 +141,7 @@ export function BillDetail({ billId }: { billId: string }) {
             <>
               <p className="mt-2 text-sm text-ink">
                 {record?.external ? "Ai marcat factura ca plătită în afara aplicației." : `Plata de ${fmtRon(event.amount)} a ajuns la ${bill.provider}.`}
-                {event.frozen > 0 ? ` Diferența de ${fmtRon(event.frozen)} rămâne înghețată până la factura storno.` : ""}
+                {event.frozen > 0 ? ` Pentru diferența de ${fmtRon(event.frozen)} ai cerut suspendarea plății până la soluționarea sesizării.` : ""}
                 {storno ? ` Diferența de ${fmtRon(storno.disputedAmount)} a fost anulată prin factura storno.` : ""}
               </p>
               {record && (
@@ -180,7 +180,7 @@ export function BillDetail({ billId }: { billId: string }) {
                 {late
                   ? `Scadența a trecut de ${daysLabel(daysUntil(today, bill.dueDate))}. Plătește acum ca să eviți penalizările.`
                   : event.frozen > 0
-                    ? `Mai ai de plătit suma necontestată. ${fmtRon(event.frozen)} rămân înghețați până la factura storno.`
+                    ? `Mai ai de plătit suma necontestată. Pentru ${fmtRon(event.frozen)} ai cerut suspendarea plății până la soluționarea sesizării.`
                     : storno
                       ? `${bill.provider} a corectat factura. Plătești doar suma corectă, fără comision.`
                       : "Factura e în regulă. Plătești direct din aplicație, fără comision."}
@@ -211,8 +211,8 @@ export function BillDetail({ billId }: { billId: string }) {
         </button>
       )}
 
-      {justSent && <DisputeSentCard ticket={ticket ?? justSent} provider={bill.provider} />}
-      {ticket && <TicketTracker ticket={ticket} provider={bill.provider} />}
+      {justSent && <DisputeSentCard ticket={ticket ?? justSent} bill={bill} />}
+      {ticket && <TicketTracker ticket={ticket} bill={bill} />}
 
       <SelfReadingCard bill={bill} />
 
