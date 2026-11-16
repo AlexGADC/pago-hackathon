@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Paleta Pago Home & Family (vezi CLAUDE.md §4). Folosiți ca: bg-pago-blue, text-alert, bg-app etc. */
+@theme {
+  --color-pago-blue: #0066ff;
+  --color-family-indigo: #6366f1;
+  --color-family-coral: #f97316;
+  --color-app: #f6f8fc;
+  --color-card-border: #e2e8f0;
+  --color-alert: #ef4444;
+  --color-alert-bg: #fef2f2;
+  --color-success: #10b981;
+  --color-success-bg: #ecfdf5;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: #e9edf5;
+  color: #0f172a;
+}
