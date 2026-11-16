@@ -7,6 +7,7 @@ import { useFamily } from "@/context/FamilyContext";
 import { FAMILY_NAME } from "@/data/mockFamilyData";
 import { CATEGORY_META, buildEvents, eventsInMonth, eventsOnDay, monthDays, splitPaid, toIso, weekdayIndex, type PaymentEvent } from "@/lib/payments";
 import { DEMO_TODAY, fmtRon } from "@/lib/disputes";
+import { dueReminders, reminderLabel } from "@/lib/reminders";
 
 const MONTHS = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"];
 const WEEKDAYS = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"];
@@ -25,11 +26,11 @@ function Avatar({ event }: { event: PaymentEvent }) {
   return (
     <span
       title={event.title}
-      className={`grid size-7 shrink-0 place-items-center rounded-lg ${
+      className={`grid size-6 shrink-0 place-items-center rounded-md ${
         event.paid ? `${meta.dot} text-white` : `bg-white ${meta.text} border-2 border-current`
       }`}
     >
-      <Icon size={15} strokeWidth={2.4} />
+      <Icon size={12} strokeWidth={2.4} />
     </span>
   );
 }
@@ -38,8 +39,12 @@ export function HomeScreen() {
   const { house, bills } = useFamily();
   const [cursor, setCursor] = useState({ year: todayYear, month: todayMonth });
   const [openDate, setOpenDate] = useState<string | null>(null);
+  const [paidIds, setPaidIds] = useState<string[]>([]);
+  const [snoozed, setSnoozed] = useState<string[]>([]);
 
-  const events = useMemo(() => buildEvents(house.id, cursor.year), [house.id, cursor.year]);
+  const baseEvents = useMemo(() => buildEvents(house.id, cursor.year), [house.id, cursor.year]);
+  const events = useMemo(() => baseEvents.map((e) => (paidIds.includes(e.id) ? { ...e, paid: true } : e)), [baseEvents, paidIds]);
+  const reminders = useMemo(() => dueReminders(events).filter((r) => !snoozed.includes(r.event.id)), [events, snoozed]);
   const monthEvents = useMemo(() => eventsInMonth(events, cursor.year, cursor.month), [events, cursor]);
   const { paid, remaining } = splitPaid(monthEvents);
   const total = paid + remaining;
@@ -71,6 +76,39 @@ export function HomeScreen() {
           <span>🚨 Ai {alerts} {alerts === 1 ? "factură suspectă" : "facturi suspecte"} · {FAMILY_NAME}</span>
           <span aria-hidden>→</span>
         </Link>
+      )}
+
+      {reminders.length > 0 && (
+        <section className="rounded-card bg-white p-4 shadow-card">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">Remindere</p>
+            <span className="text-[11px] font-semibold text-muted">7 zile · 3 zile · ziua scadenței</span>
+          </div>
+          <ul className="flex flex-col divide-y divide-line">
+            {reminders.map((r) => (
+              <li key={r.event.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar event={r.event} />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ink">{r.event.title}</p>
+                      <p className={`text-xs font-bold ${r.overdue || r.daysLeft === 0 ? "text-alert" : "text-muted"}`}>{reminderLabel(r.daysLeft)}</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-bold text-ink">{fmtRon(r.event.amount)}</span>
+                </div>
+                <div className="flex gap-2 pl-[52px]">
+                  <button onClick={() => setPaidIds((ids) => [...ids, r.event.id])} className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
+                    Marchează plătit
+                  </button>
+                  <button onClick={() => setSnoozed((ids) => [...ids, r.event.id])} className="rounded-full bg-app px-3 py-1 text-xs font-semibold text-ink">
+                    Amână
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section className="rounded-card bg-white p-2 shadow-card">
@@ -119,11 +157,11 @@ export function HomeScreen() {
               >
                 <span>{day}</span>
                 {dayEvents.length > 0 && (
-                  <span className="mt-1.5 flex flex-wrap justify-center gap-0.5">
-                    {dayEvents.slice(0, 2).map((e) => (
+                  <span className={`grid w-full place-items-center gap-0.5 ${dayEvents.length === 1 ? "" : "grid-cols-2"}`}>
+                    {dayEvents.slice(0, dayEvents.length > 4 ? 3 : 4).map((e) => (
                       <Avatar key={e.id} event={e} />
                     ))}
-                    {dayEvents.length > 2 && <span className="grid size-7 place-items-center rounded-lg bg-app text-[11px] font-bold text-muted">+{dayEvents.length - 2}</span>}
+                    {dayEvents.length > 4 && <span className="grid size-6 place-items-center rounded-md bg-app text-[10px] font-bold text-muted">+{dayEvents.length - 3}</span>}
                   </span>
                 )}
               </button>
