@@ -17,6 +17,7 @@ export type BillStatus = "normala" | "red_flag" | "contestata" | "platita_partia
 export interface MonthlyAmount {
   month: string;
   amount: number;
+  issuedOn?: string;
 }
 
 export interface MeterReading {
@@ -72,6 +73,7 @@ export interface DisputeTicket {
   disputedAmount: number;
   paidAmount: number;
   message: string;
+  resolvedAt?: string;
 }
 
 export type MemberRole = "admin" | "junior" | "protejat";
@@ -220,11 +222,15 @@ export interface AutopayRule {
   createdAt: string;
 }
 
+export type AutopayLogKind = "consent" | "paid" | "skipped";
+
 export interface AutopayLogEntry {
   id: string;
   targetId: string;
   at: string;
   text: string;
+  kind?: AutopayLogKind;
+  eventId?: string;
 }
 
 export interface NotificationChannels {

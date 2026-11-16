@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { paymentMethods } from "@/data/mockFamilyData";
-import { cardExpiryLabel, cardLabel, checkoutTotals, isCardExpired, makeReference, maxDiscount, payeeLabel, pointsEarned, pointsValue } from "@/lib/checkout";
+import {
+  cardExpiryLabel,
+  cardLabel,
+  checkoutTotals,
+  duplicateMessage,
+  findDuplicates,
+  isCardExpired,
+  makeReference,
+  maxDiscount,
+  payeeLabel,
+  pointsEarned,
+  pointsValue,
+} from "@/lib/checkout";
 import { suggestedLimit } from "@/lib/autopay";
 import { fmtRon } from "@/lib/disputes";
 import { addDays, addMonths, fmtDate, fmtDay, fmtLongDate, initials, plural } from "@/lib/format";
-import type { CheckoutItem } from "@/types/pago";
+import type { CheckoutItem, PaymentRecord } from "@/types/pago";
 
 const item = (amount: number): CheckoutItem => ({ eventId: `e-${amount}`, targetKind: "bill", houseId: "acasa", title: "Test", amount, category: "utilitati" });
 
@@ -55,6 +67,81 @@ describe("cards and references", () => {
   it("suggests an autopay limit above the usual amount", () => {
     expect(suggestedLimit(62)).toBe(80);
     expect(suggestedLimit(175)).toBe(220);
+  });
+});
+
+describe("duplicate payments", () => {
+  const digi: CheckoutItem = { eventId: "bill-digi-2026-11", targetId: "bill-digi", targetKind: "bill", houseId: "acasa", title: "Digi România", amount: 62, category: "utilitati" };
+  const topUp: CheckoutItem = { eventId: "svc-topup-b", targetKind: "extra", houseId: "acasa", title: "Reîncărcare Orange", amount: 50, category: "servicii" };
+
+  function paid(patch: Partial<PaymentRecord>): PaymentRecord {
+    return {
+      id: "pay-1-0",
+      eventId: "bill-digi-2026-11",
+      targetId: "bill-digi",
+      targetKind: "bill",
+      houseId: "acasa",
+      title: "Digi România",
+      payee: "PAGO*DIGI ROMANIA",
+      category: "utilitati",
+      amount: 62,
+      fee: 0,
+      discount: 0,
+      pointsUsed: 0,
+      pointsEarned: 6,
+      methodId: "pm-visa",
+      methodLabel: "Visa •••• 4821",
+      status: "confirmata",
+      createdAt: "2026-11-14T09:30:00",
+      reference: "PG-000001",
+      ...patch,
+    };
+  }
+
+  const topUpPaid = (patch: Partial<PaymentRecord> = {}) =>
+    paid({ id: "pay-2-0", eventId: "svc-topup-a", targetId: undefined, targetKind: "extra", title: "Reîncărcare Orange", category: "servicii", amount: 50, ...patch });
+
+  it("finds a confirmed payment for the same bill and period", () => {
+    const record = paid({});
+    expect(findDuplicates([digi], [record], "2026-11-16")).toEqual([{ item: digi, record }]);
+    expect(duplicateMessage({ item: digi, record })).toBe("Ai plătit deja Digi România pe 14 nov.");
+  });
+
+  it("finds a payment that is still on its way", () => {
+    const record = paid({ status: "trimisa", pointsEarned: 0 });
+    const [duplicate] = findDuplicates([digi], [record], "2026-11-16");
+    expect(duplicate.record).toBe(record);
+    expect(duplicateMessage(duplicate)).toBe("Ai deja o plată în curs pentru Digi România, începută pe 14 nov.");
+  });
+
+  it("ignores failed payments, other profiles and other bills", () => {
+    expect(findDuplicates([digi], [paid({ status: "esuata" })], "2026-11-16")).toEqual([]);
+    expect(findDuplicates([digi], [paid({ houseId: "bunici" })], "2026-11-16")).toEqual([]);
+    expect(findDuplicates([digi], [paid({ eventId: "bill-gaz-2026-11", targetId: "bill-gaz", title: "E.ON Energie", amount: 182 })], "2026-11-16")).toEqual([]);
+  });
+
+  it("does not mistake last month's bill for a duplicate, even at the same amount", () => {
+    const october = paid({ eventId: "bill-digi-2026-10", createdAt: "2026-10-19T08:00:00" });
+    expect(findDuplicates([digi], [october], "2026-11-16")).toEqual([]);
+  });
+
+  it("matches payments without a known target by name and amount within 30 days", () => {
+    expect(findDuplicates([topUp], [topUpPaid()], "2026-11-16")).toHaveLength(1);
+    expect(findDuplicates([topUp], [topUpPaid({ createdAt: "2026-10-17T09:00:00" })], "2026-11-16")).toHaveLength(1);
+    expect(findDuplicates([topUp], [topUpPaid({ createdAt: "2026-10-16T09:00:00" })], "2026-11-16")).toEqual([]);
+    expect(findDuplicates([topUp], [topUpPaid({ amount: 30 })], "2026-11-16")).toEqual([]);
+    expect(findDuplicates([topUp], [topUpPaid({ title: "Reîncărcare Vodafone" })], "2026-11-16")).toEqual([]);
+  });
+
+  it("compares the price before the points discount", () => {
+    expect(findDuplicates([topUp], [topUpPaid({ amount: 40, discount: 10 })], "2026-11-16")).toHaveLength(1);
+  });
+
+  it("reports each item once, with its most recent payment", () => {
+    const older = topUpPaid({ id: "pay-3-0", createdAt: "2026-11-02T10:00:00" });
+    const newer = topUpPaid({ id: "pay-4-0", createdAt: "2026-11-15T18:00:00" });
+    const found = findDuplicates([digi, topUp], [older, paid({}), newer], "2026-11-16");
+    expect(found.map((d) => d.record.id)).toEqual(["pay-1-0", "pay-4-0"]);
   });
 });
 

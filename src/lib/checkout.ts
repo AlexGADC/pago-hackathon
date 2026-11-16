@@ -1,11 +1,12 @@
 import { DEMO_TODAY } from "@/lib/disputes";
-import { dateParts, hashOf, pad2 } from "@/lib/format";
-import type { CheckoutItem, PaymentMethod } from "@/types/pago";
+import { addDays, dateParts, fmtDay, hashOf, pad2 } from "@/lib/format";
+import type { CheckoutItem, PaymentMethod, PaymentRecord } from "@/types/pago";
 
 export const POINTS_PER_RON = 100;
 export const MAX_DISCOUNT_SHARE = 0.2;
 export const EXTERNAL_METHOD_ID = "external";
 export const EXTERNAL_METHOD_LABEL = "În afara aplicației";
+export const DUPLICATE_WINDOW_DAYS = 30;
 
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -67,4 +68,38 @@ export function checkoutTotals(items: CheckoutItem[], points: number, usePoints:
   const subtotal = round2(items.reduce((sum, item) => sum + item.amount, 0));
   const discount = usePoints ? maxDiscount(points, subtotal) : 0;
   return { subtotal, discount, pointsUsed: discount * POINTS_PER_RON, fee: 0, total: round2(subtotal - discount) };
+}
+
+export interface DuplicatePayment {
+  item: CheckoutItem;
+  record: PaymentRecord;
+}
+
+function isSamePeriod(record: PaymentRecord, item: CheckoutItem): boolean {
+  return record.eventId === item.eventId;
+}
+
+function isLookalike(record: PaymentRecord, item: CheckoutItem, since: string): boolean {
+  if (record.targetId && item.targetId) return false;
+  return record.title === item.title && round2(record.amount + record.discount) === round2(item.amount) && record.createdAt.slice(0, 10) >= since;
+}
+
+export function findDuplicates(items: CheckoutItem[], payments: PaymentRecord[], today: string = DEMO_TODAY): DuplicatePayment[] {
+  const since = addDays(today.slice(0, 10), -DUPLICATE_WINDOW_DAYS);
+  const found: DuplicatePayment[] = [];
+  for (const item of items) {
+    const matches = payments
+      .filter((p) => p.status !== "esuata" && p.houseId === item.houseId)
+      .filter((p) => isSamePeriod(p, item) || isLookalike(p, item, since))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (matches.length > 0) found.push({ item, record: matches[0] });
+  }
+  return found;
+}
+
+export function duplicateMessage(duplicate: DuplicatePayment): string {
+  const day = fmtDay(duplicate.record.createdAt);
+  return duplicate.record.status === "confirmata"
+    ? `Ai plătit deja ${duplicate.item.title} pe ${day}.`
+    : `Ai deja o plată în curs pentru ${duplicate.item.title}, începută pe ${day}.`;
 }

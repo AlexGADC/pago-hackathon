@@ -14,8 +14,9 @@ import {
 } from "@/lib/checkout";
 import { DEMO_TODAY, fmtRon } from "@/lib/disputes";
 import { addDays, addMonths, pad2 } from "@/lib/format";
-import { billEventId } from "@/lib/payments";
+import { billEventId, buildEvents, eventState, toCheckoutItem, type PaymentEvent } from "@/lib/payments";
 import type {
+  AutopayLogKind,
   AutopayRule,
   Bill,
   CheckoutItem,
@@ -40,7 +41,8 @@ export interface PayInput {
   methodId: string;
   usePoints: boolean;
   now: string;
-  stamp: number;
+  stamp: number | string;
+  auto?: boolean;
 }
 
 export function startPayments(state: AppState, input: PayInput): AppState {
@@ -76,6 +78,7 @@ export function startPayments(state: AppState, input: PayInput): AppState {
       reference: makeReference(id),
       batchId: input.items.length > 1 ? `batch-${input.stamp}` : undefined,
       renew: item.renew,
+      auto: input.auto ? true : undefined,
     };
   });
 
@@ -192,6 +195,26 @@ export function submitDispute(state: AppState, ticket: DisputeTicket, now: strin
 export function advanceTickets(state: AppState): AppState {
   if (!state.tickets.some((t) => t.stage === "trimisa")) return state;
   return { ...state, tickets: state.tickets.map((t) => (t.stage === "trimisa" ? { ...t, stage: "in_analiza" as const } : t)) };
+}
+
+export function resolveTickets(state: AppState, now: string): AppState {
+  const closing = state.tickets.filter((t) => t.stage === "in_analiza");
+  if (closing.length === 0) return state;
+  return {
+    ...state,
+    tickets: state.tickets.map((t) => (t.stage === "in_analiza" ? { ...t, stage: "stornata" as const, resolvedAt: now } : t)),
+    bills: state.bills.map((b) => {
+      const ticket = closing.find((t) => t.billId === b.id);
+      if (!ticket) return b;
+      const settled = b.status === "platita_partial" || b.status === "platita";
+      return {
+        ...b,
+        amount: ticket.paidAmount,
+        status: settled ? ("platita" as const) : ("normala" as const),
+        meter: b.meter && ticket.realIndex !== undefined ? { ...b.meter, billedIndex: ticket.realIndex } : b.meter,
+      };
+    }),
+  };
 }
 
 export function reconnect(state: AppState, provider: string, houseId: HouseId): AppState {
@@ -337,6 +360,50 @@ export function disableAutopay(state: AppState, targetId: string, name: string, 
     autopay: state.autopay.map((r) => (r.targetId === targetId ? { ...r, enabled: false } : r)),
     autopayLog: [...state.autopayLog, { id: `log-${stamp}`, targetId, at: now, text: `Plată automată oprită pentru ${name}.` }],
   };
+}
+
+function logAutopay(state: AppState, event: PaymentEvent, kind: AutopayLogKind, now: string, text: string): AppState {
+  const id = `log-${kind === "paid" ? "auto" : "skip"}-${event.id}`;
+  if (state.autopayLog.some((entry) => entry.id === id)) return state;
+  return { ...state, autopayLog: [...state.autopayLog, { id, targetId: event.targetId, at: now, text, kind, eventId: event.id }] };
+}
+
+function skipReason(event: PaymentEvent, rule: AutopayRule): string {
+  if (event.flagged) return "factura pare greșită. Verific-o și confirmă plata doar dacă e corectă.";
+  if (event.amount > rule.maxAmount) return `suma de ${fmtRon(event.amount)} depășește limita de ${fmtRon(rule.maxAmount)}. Confirmă plata din aplicație dacă suma e corectă.`;
+  return "cardul ales nu mai e valabil. Alege alt card și confirmă plata.";
+}
+
+export function runAutopay(state: AppState, now: string): AppState {
+  const today = now.slice(0, 10);
+  const ledger = { bills: state.bills, subscriptions: state.subscriptions, expiries: state.expiries, payments: state.payments, tickets: state.tickets, autopay: state.autopay };
+  let next = state;
+
+  for (const house of state.houses) {
+    for (const event of buildEvents(ledger, house.id, Number(today.slice(0, 4)), today)) {
+      if (event.date !== today || event.autopay === "none" || event.estimated) continue;
+      const status = eventState(event);
+      if (status === "paid" || status === "pending") continue;
+      const rule = state.autopay.find((r) => r.targetId === event.targetId && r.enabled);
+      if (!rule) continue;
+
+      const method = state.methods.find((m) => m.id === rule.methodId);
+      if (event.autopay === "blocked" || !method || isCardExpired(method, today)) {
+        next = logAutopay(next, event, "skipped", now, `Plata automată pentru ${event.title} nu s-a făcut: ${skipReason(event, rule)}`);
+        continue;
+      }
+      if (status !== "auto" || state.payments.some((p) => p.auto && p.eventId === event.id)) continue;
+
+      const expiry = event.targetKind === "expiry" ? state.expiries.find((e) => e.id === event.targetId) : undefined;
+      const item: CheckoutItem = {
+        ...toCheckoutItem(event),
+        renew: expiry ? { expiresOn: addMonths(expiry.expiresOn, 12), price: expiry.price, provider: expiry.provider } : undefined,
+      };
+      next = startPayments(next, { items: [item], methodId: method.id, usePoints: false, now, stamp: `auto-${event.id}`, auto: true });
+      next = logAutopay(next, event, "paid", now, `Plată automată pornită pentru ${event.title}: ${fmtRon(event.amount)}, cu ${cardLabel(method)}.`);
+    }
+  }
+  return next;
 }
 
 export function addMethod(state: AppState, method: PaymentMethod): AppState {

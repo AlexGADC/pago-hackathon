@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { PROVIDER_CATALOG } from "@/data/catalog";
 import { POINTS } from "@/data/mockFamilyData";
+import { buildNotifications } from "@/lib/notifications";
+import { buildEvents } from "@/lib/payments";
 import type { CheckoutItem, DisputeTicket } from "@/types/pago";
 import * as actions from "./actions";
 import { createInitialState, restoreState, type AppState } from "./appState";
 
 const NOW = "2026-11-16T12:00:00";
+const LATER = "2026-11-16T12:05:00";
 
 const digi: CheckoutItem = { eventId: "bill-digi-2026-11", targetId: "bill-digi", targetKind: "bill", houseId: "acasa", title: "Digi România", amount: 62, category: "utilitati" };
 const gaz: CheckoutItem = { eventId: "bill-gaz-2026-11", targetId: "bill-gaz", targetKind: "bill", houseId: "acasa", title: "E.ON Energie", amount: 182, category: "utilitati" };
@@ -13,6 +16,35 @@ const maintenance: CheckoutItem = { eventId: "bill-intretinere-2026-11", targetI
 
 function settle(state: AppState): AppState {
   return actions.advancePayments(actions.advancePayments(state));
+}
+
+function ledgerOf(state: AppState) {
+  return { bills: state.bills, subscriptions: state.subscriptions, expiries: state.expiries, payments: state.payments, tickets: state.tickets, autopay: state.autopay };
+}
+
+function electricaEvent(state: AppState) {
+  return buildEvents(ledgerOf(state), "acasa", 2026).find((e) => e.id === "bill-electrica-2026-11");
+}
+
+function notificationIds(state: AppState, today = "2026-11-16"): string[] {
+  return buildNotifications({
+    houseId: "acasa",
+    events: buildEvents(ledgerOf(state), "acasa", 2026, today),
+    bills: state.bills,
+    subscriptions: state.subscriptions,
+    expiries: state.expiries,
+    connections: state.connections,
+    payments: state.payments,
+    tickets: state.tickets,
+    readings: state.readings,
+    settings: state.settings,
+    autopayLog: state.autopayLog,
+    today,
+  }).map((n) => n.id);
+}
+
+function lastLog(state: AppState) {
+  return state.autopayLog[state.autopayLog.length - 1];
 }
 
 describe("payments", () => {
@@ -125,6 +157,34 @@ describe("disputes", () => {
     const sent = actions.submitDispute(createInitialState(), ticket, NOW, 10);
     expect(actions.advanceTickets(sent).tickets[0].stage).toBe("in_analiza");
   });
+
+  it("closes the ticket with a storno invoice and releases the frozen amount", () => {
+    const analysed = actions.advanceTickets(settle(actions.submitDispute(createInitialState(), ticket, NOW, 16)));
+    expect(electricaEvent(analysed)).toMatchObject({ amount: 11, frozen: 1469, paid: true });
+
+    const closed = actions.resolveTickets(analysed, LATER);
+    expect(closed.tickets[0]).toMatchObject({ stage: "stornata", resolvedAt: LATER, disputedAmount: 1469 });
+    const bill = closed.bills.find((b) => b.id === "bill-electrica");
+    expect(bill).toMatchObject({ status: "platita", amount: 11 });
+    expect(bill?.meter?.billedIndex).toBe(15.79);
+    expect(electricaEvent(closed)).toMatchObject({ amount: 11, frozen: 0, paid: true });
+    expect(actions.resolveTickets(closed, LATER)).toBe(closed);
+  });
+
+  it("leaves the corrected bill payable when the storno arrives before the payment", () => {
+    const analysed = actions.advanceTickets(actions.submitDispute(createInitialState(), ticket, NOW, 17));
+    expect(analysed.bills.find((b) => b.id === "bill-electrica")?.status).toBe("contestata");
+
+    const closed = actions.resolveTickets(analysed, LATER);
+    expect(closed.bills.find((b) => b.id === "bill-electrica")).toMatchObject({ status: "normala", amount: 11 });
+    expect(electricaEvent(closed)).toMatchObject({ amount: 11, frozen: 0, paid: false });
+    expect(settle(closed).bills.find((b) => b.id === "bill-electrica")?.status).toBe("platita");
+  });
+
+  it("does not close a ticket the supplier has not picked up yet", () => {
+    const sent = actions.submitDispute(createInitialState(), ticket, NOW, 18);
+    expect(actions.resolveTickets(sent, LATER)).toBe(sent);
+  });
 });
 
 describe("providers", () => {
@@ -192,6 +252,81 @@ describe("subscriptions, autopay and cards", () => {
     const second = actions.submitReading(first, "bill-gaz", 4335, NOW);
     expect(second.readings).toHaveLength(1);
     expect(second.points).toBe(first.points);
+  });
+});
+
+describe("autopay runs", () => {
+  const spotify = { targetId: "sub-spotify", targetKind: "subscription" as const, methodId: "pm-visa", noticeDays: 3, name: "Spotify Family", now: NOW };
+
+  it("pays a scheduled payment on its due date through the usual payment flow", () => {
+    const initial = createInitialState();
+    const ran = actions.runAutopay(initial, NOW);
+    expect(ran.payments).toHaveLength(1);
+    expect(ran.payments[0]).toMatchObject({ eventId: "sub-spotify-2026-11", amount: 39.99, status: "procesare", methodId: "pm-visa", auto: true });
+    expect(ran.payments[0].reference).toMatch(/^PG-\d{6}$/);
+    expect(lastLog(ran)).toMatchObject({ kind: "paid", targetId: "sub-spotify", eventId: "sub-spotify-2026-11" });
+    expect(lastLog(ran).text).toContain("39,99 RON");
+
+    const done = settle(ran);
+    expect(done.payments[0]).toMatchObject({ status: "confirmata", pointsEarned: 4 });
+    expect(done.points).toBe(initial.points + 4);
+    expect(actions.runAutopay(ran, NOW)).toBe(ran);
+    expect(actions.runAutopay(done, NOW)).toBe(done);
+  });
+
+  it("waits for the due date of payments that are only announced", () => {
+    const today = actions.runAutopay(createInitialState(), NOW);
+    expect(today.payments.map((p) => p.eventId)).toEqual(["sub-spotify-2026-11"]);
+
+    const onDigiDueDate = actions.runAutopay(createInitialState(), "2026-11-20T08:00:00");
+    expect(onDigiDueDate.payments.map((p) => p.eventId)).toEqual(["bill-digi-2026-11"]);
+    expect(settle(onDigiDueDate).bills.find((b) => b.id === "bill-digi")?.status).toBe("platita");
+  });
+
+  it("does not pay above the limit and asks for confirmation instead", () => {
+    const lowered = actions.saveAutopay(createInitialState(), { ...spotify, maxAmount: 30, stamp: 30 });
+    expect(notificationIds(lowered)).toContain("autoblock-sub-spotify-2026-11");
+
+    const ran = actions.runAutopay(lowered, NOW);
+    expect(ran.payments).toHaveLength(0);
+    expect(lastLog(ran)).toMatchObject({ kind: "skipped", eventId: "sub-spotify-2026-11" });
+    expect(lastLog(ran).text).toContain("depășește limita de 30 RON");
+    expect(notificationIds(ran)).toContain("autoskip-sub-spotify-2026-11");
+    expect(notificationIds(ran)).not.toContain("autoblock-sub-spotify-2026-11");
+    expect(actions.runAutopay(ran, NOW)).toBe(ran);
+
+    const raised = actions.runAutopay(actions.saveAutopay(ran, { ...spotify, maxAmount: 60, stamp: 31 }), NOW);
+    expect(raised.payments.map((p) => p.eventId)).toEqual(["sub-spotify-2026-11"]);
+    expect(notificationIds(settle(raised))).not.toContain("autoskip-sub-spotify-2026-11");
+  });
+
+  it("does not pay a suspicious bill automatically", () => {
+    const withRule = actions.saveAutopay(createInitialState(), { targetId: "bill-electrica", targetKind: "bill", maxAmount: 2000, methodId: "pm-visa", noticeDays: 3, name: "Electrica Furnizare", now: NOW, stamp: 32 });
+    expect(notificationIds(withRule, "2026-11-20")).toContain("autoblock-bill-electrica-2026-11");
+
+    const ran = actions.runAutopay(withRule, "2026-11-25T08:00:00");
+    expect(ran.payments).toHaveLength(0);
+    expect(lastLog(ran)).toMatchObject({ kind: "skipped", targetId: "bill-electrica", eventId: "bill-electrica-2026-11" });
+    expect(lastLog(ran).text).toContain("pare greșită");
+    expect(notificationIds(ran, "2026-11-25")).toContain("autoskip-bill-electrica-2026-11");
+    expect(ran.bills.find((b) => b.id === "bill-electrica")?.status).toBe("red_flag");
+  });
+
+  it("does not charge an expired card", () => {
+    const oldCard = actions.saveAutopay(createInitialState(), { ...spotify, methodId: "pm-mc", maxAmount: 60, stamp: 33 });
+    const ran = actions.runAutopay(oldCard, NOW);
+    expect(ran.payments).toHaveLength(0);
+    expect(lastLog(ran)).toMatchObject({ kind: "skipped", eventId: "sub-spotify-2026-11" });
+    expect(lastLog(ran).text).toContain("cardul ales nu mai e valabil");
+    expect(notificationIds(ran)).toContain("autoskip-sub-spotify-2026-11");
+  });
+
+  it("renews an insurance automatically for another year", () => {
+    const withRule = actions.saveAutopay(createInitialState(), { targetId: "exp-rca-logan", targetKind: "expiry", maxAmount: 1500, methodId: "pm-visa", noticeDays: 7, name: "RCA · Dacia Logan", now: NOW, stamp: 34 });
+    const done = settle(actions.runAutopay(withRule, "2026-11-29T08:00:00"));
+    expect(done.payments).toHaveLength(1);
+    expect(done.payments[0]).toMatchObject({ eventId: "exp-rca-logan-2026", amount: 1150, status: "confirmata", auto: true });
+    expect(done.expiries.find((e) => e.id === "exp-rca-logan")).toMatchObject({ expiresOn: "2027-11-29", price: 1150, provider: "Groupama" });
   });
 });
 

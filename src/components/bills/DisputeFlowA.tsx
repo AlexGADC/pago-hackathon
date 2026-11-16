@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Snowflake } from "lucide-react";
+import { CheckCircle2, Hourglass } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";
-import { fmtNum, fmtRon, legalDeadlineDays, validateIndex } from "@/lib/disputes";
+import { disputeRequest, fmtNum, fmtRon, legalDeadlineDays, legalDeadlineLabel, validateIndex } from "@/lib/disputes";
 import { demoNow, uniqueId } from "@/lib/format";
 import type { Bill, DisputeTicket } from "@/types/pago";
 
@@ -36,8 +36,7 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       message:
         `Către ${bill.provider}: contest factura ${bill.invoiceNumber} (cod client ${bill.clientCode}). ` +
         `Indexul facturat ${fmtNum(meter.billedIndex)} ${meter.unit} este estimat greșit; indexul real este ${fmtNum(realIndex)} ${meter.unit} ` +
-        `(${CONFIDENCE}). Achit suma necontestată de ${fmtRon(validation.correctAmount)} și solicit emiterea facturii storno ` +
-        `pentru diferența de ${fmtRon(validation.disputedAmount)}.`,
+        `(${CONFIDENCE}). ${disputeRequest(validation.correctAmount, validation.disputedAmount)}`,
     };
     submitDispute(ticket);
     onSent(ticket);
@@ -89,12 +88,14 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
             </div>
             <div className="rounded-2xl bg-surface p-3 shadow-card">
               <p className="flex items-center gap-1 text-xs text-muted">
-                <Snowflake size={12} /> Înghețat
+                <Hourglass size={12} className="shrink-0" /> Ceri suspendarea pentru
               </p>
               <p className="text-2xl font-extrabold text-ink">{fmtRon(validation.disputedAmount)}</p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted">Diferența rămâne înghețată până când {bill.provider} emite factura storno.</p>
+          <p className="mt-3 text-xs text-muted">
+            Îi ceri furnizorului să suspende plata diferenței până la soluționarea sesizării. {bill.provider} are la dispoziție {legalDeadlineLabel(bill)} ca să răspundă.
+          </p>
           <button onClick={confirm} className="btn-dark mt-4 w-full">
             <CheckCircle2 size={18} /> Trimite sesizarea și plătește {fmtRon(validation.correctAmount)}
           </button>

@@ -179,7 +179,7 @@ export const FAQ: FaqEntry[] = [
   },
   {
     question: "Cum contest o factură greșită?",
-    answer: "Deschide factura marcată ca suspectă. La utilitățile cu contor introduci indexul real, iar la celelalte confirmi linia greșită. Plătești doar suma corectă, iar diferența rămâne înghețată până la factura storno.",
+    answer: "Deschide factura marcată ca suspectă. La utilitățile cu contor introduci indexul real, iar la celelalte confirmi linia greșită. Plătești pe loc suma necontestată, iar pentru diferență ceri furnizorului suspendarea plății până la soluționarea sesizării.",
   },
   {
     question: "Cum anulez un abonament?",

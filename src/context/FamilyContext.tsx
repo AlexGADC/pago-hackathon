@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ProviderTemplate } from "@/data/catalog";
-import { DEMO_TODAY } from "@/lib/disputes";
+import { DEMO_TODAY, fmtRon } from "@/lib/disputes";
 import { demoNow } from "@/lib/format";
 import { buildNotifications, type AppNotification } from "@/lib/notifications";
 import { buildEvents, type LedgerData, type PaymentEvent } from "@/lib/payments";
@@ -29,6 +29,8 @@ import { store, subscribeNever } from "./store";
 const PAYMENT_STEP_MS = 1300;
 const SYNC_DELAY_MS = 1600;
 const TICKET_DELAY_MS = 3500;
+const STORNO_DELAY_MS = 6000;
+const AUTOPAY_DELAY_MS = 1200;
 const SUPPORT_DELAY_MS = 4000;
 const TOAST_MS = 2800;
 
@@ -218,6 +220,33 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
   }, [state.tickets]);
 
   useEffect(() => {
+    if (!state.tickets.some((t) => t.stage === "in_analiza")) return;
+    const timer = setTimeout(() => {
+      const closing = store.getSnapshot().tickets.filter((t) => t.stage === "in_analiza");
+      store.update((s) => actions.resolveTickets(s, demoNow()));
+      const stamp = Date.now();
+      setToasts((list) => [
+        ...list,
+        ...closing.map((t, index) => ({ id: stamp + index, text: `Factură stornată: ai economisit ${fmtRon(t.disputedAmount)}`, tone: "success" as const })),
+      ].slice(-3));
+    }, STORNO_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [state.tickets]);
+
+  useEffect(() => {
+    if (!state.onboardingDone) return;
+    const timer = setTimeout(() => {
+      const before = store.getSnapshot().payments.length;
+      store.update((s) => actions.runAutopay(s, demoNow()));
+      const started = store.getSnapshot().payments.slice(before).filter((p) => p.auto);
+      if (started.length === 0) return;
+      const stamp = Date.now();
+      setToasts((list) => [...list, ...started.map((p, index) => ({ id: stamp + index, text: `Plată automată: ${p.title} · ${fmtRon(p.amount)}`, tone: "info" as const }))].slice(-3));
+    }, AUTOPAY_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [state.autopay, state.onboardingDone]);
+
+  useEffect(() => {
     if (!state.supportTickets.some((t) => t.status === "deschis")) return;
     const timer = setTimeout(() => store.update(actions.answerSupportTickets), SUPPORT_DELAY_MS);
     return () => clearTimeout(timer);
@@ -250,6 +279,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     tickets: state.tickets,
     readings: state.readings,
     settings: state.settings,
+    autopayLog: state.autopayLog,
   });
 
   const value: FamilyContextValue = {

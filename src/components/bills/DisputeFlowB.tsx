@@ -1,10 +1,10 @@
 "use client";
 
-import { CheckCircle2, FileText, Snowflake } from "lucide-react";
+import { CheckCircle2, FileText, Hourglass } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";
-import { fmtRon, legalDeadlineDays } from "@/lib/disputes";
-import { daysLabel, demoNow, fmtDate, uniqueId } from "@/lib/format";
+import { disputeRequest, fmtRon, legalDeadlineDays, legalDeadlineLabel } from "@/lib/disputes";
+import { demoNow, fmtDate, uniqueId } from "@/lib/format";
 import type { Bill, DisputeTicket } from "@/types/pago";
 
 const CONFIDENCE = "Confirmat de client (fără contor)" as const;
@@ -39,7 +39,7 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       message:
         `Către ${bill.provider}: contest factura ${bill.invoiceNumber} (cod client ${bill.clientCode}). ` +
         `Pe factură apare „${suspicious[0] ?? "o linie greșită"}”, ceea ce nu corespunde situației reale. ` +
-        `Achit suma corectă de ${fmtRon(correctAmount)} și solicit emiterea facturii storno pentru diferența de ${fmtRon(disputedAmount)}.`,
+        disputeRequest(correctAmount, disputedAmount),
     };
     submitDispute(ticket);
     onSent(ticket);
@@ -76,13 +76,13 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
           </div>
           <div className="rounded-2xl bg-surface p-3 shadow-card">
             <p className="flex items-center gap-1 text-xs text-muted">
-              <Snowflake size={12} /> Înghețat
+              <Hourglass size={12} className="shrink-0" /> Ceri suspendarea pentru
             </p>
             <p className="text-2xl font-extrabold text-ink">{fmtRon(disputedAmount)}</p>
           </div>
         </div>
         <p className="mt-3 text-xs text-muted">
-          Diferența rămâne înghețată până când {bill.provider} emite factura storno (răspuns legal în max. {daysLabel(legalDeadlineDays(bill))}).
+          Îi ceri furnizorului să suspende plata diferenței până la soluționarea sesizării. {bill.provider} are la dispoziție {legalDeadlineLabel(bill)} ca să răspundă.
         </p>
         <button onClick={confirm} className="btn-dark mt-4 w-full">
           <CheckCircle2 size={18} /> Da, e greșit · Plătește {fmtRon(correctAmount)}

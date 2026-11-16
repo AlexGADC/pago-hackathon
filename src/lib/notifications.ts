@@ -1,13 +1,13 @@
-import { DEMO_TODAY, daysUntil, fmtRon, percentOverAverage } from "@/lib/disputes";
-import { daysLabel, fmtDay } from "@/lib/format";
+import { DEMO_TODAY, daysUntil, fmtRon, legalDeadlineLabel, percentOverAverage } from "@/lib/disputes";
+import { MONTHS, addDays, addMonths, dateParts, daysInMonth, daysLabel, fmtDay, toIso } from "@/lib/format";
 import { eventState, eventsInMonth, splitPaid, type PaymentEvent } from "@/lib/payments";
 import { dueReminders, reminderLabel } from "@/lib/reminders";
 import { isUnused, priceIncrease, trialDaysLeft, yearlyCost } from "@/lib/subscriptions";
-import type { Bill, DisputeTicket, ExpiryItem, HouseId, MeterSubmission, PaymentRecord, Settings, Subscription, SupplierConnection } from "@/types/pago";
+import type { AutopayLogEntry, Bill, DisputeTicket, ExpiryItem, HouseId, MeterSubmission, PaymentRecord, Settings, Subscription, SupplierConnection } from "@/types/pago";
 
 export type NotificationTone = "alert" | "warning" | "info" | "success";
 
-export type NotificationIcon = "flag" | "clock" | "bolt" | "plug" | "x" | "check" | "trend" | "gift" | "moon" | "shield" | "mail" | "gauge" | "wallet";
+export type NotificationIcon = "flag" | "clock" | "bolt" | "plug" | "x" | "check" | "trend" | "gift" | "moon" | "shield" | "mail" | "gauge" | "wallet" | "file";
 
 export interface AppNotification {
   id: string;
@@ -30,16 +30,61 @@ export interface NotificationInput {
   tickets: DisputeTicket[];
   readings: MeterSubmission[];
   settings: Settings;
+  autopayLog?: AutopayLogEntry[];
   today?: string;
 }
 
 const TONE_ORDER: Record<NotificationTone, number> = { alert: 0, warning: 1, info: 2, success: 3 };
 const MAX_CONFIRMATIONS = 3;
+const MISSING_BILL_GRACE_DAYS = 3;
+const SAME_CYCLE_DAYS = 15;
+
+export function usualIssueDay(bill: Bill): number {
+  const days = [...bill.history.map((h) => h.issuedOn), bill.issueDate]
+    .filter((date): date is string => Boolean(date))
+    .map((date) => dateParts(date)[2])
+    .sort((a, b) => a - b);
+  return days[Math.floor((days.length - 1) / 2)];
+}
+
+export function missingBillMonth(bill: Bill, today: string = DEMO_TODAY): string | null {
+  const day = usualIssueDay(bill);
+  const onUsualDay = (year: number, month: number) => toIso(year, month, Math.min(day, daysInMonth(year, month)));
+  let [year, month] = dateParts(today);
+  let expected = onUsualDay(year, month);
+  while (addDays(expected, MISSING_BILL_GRACE_DAYS) >= today.slice(0, 10)) {
+    [year, month] = dateParts(addMonths(toIso(year, month, 1), -1));
+    expected = onUsualDay(year, month);
+  }
+  return bill.issueDate < addDays(expected, -SAME_CYCLE_DAYS) ? expected.slice(0, 7) : null;
+}
+
+export interface MissingBill {
+  month: string;
+  label: string;
+  usualDay: number;
+}
+
+export function findMissingBill(bill: Bill, connections: SupplierConnection[], today: string = DEMO_TODAY): MissingBill | null {
+  const connection = connections.find((c) => c.provider === bill.provider && c.houseId === bill.houseId);
+  if (connection?.status !== "conectat") return null;
+  const month = missingBillMonth(bill, today);
+  if (!month) return null;
+  return { month, label: MONTHS[dateParts(`${month}-01`)[1] - 1].toLowerCase(), usualDay: usualIssueDay(bill) };
+}
 
 export function selfReadingOpen(bill: Bill, today: string = DEMO_TODAY): boolean {
   if (!bill.selfReading || !bill.meter) return false;
   const day = Number(today.slice(8, 10));
   return day >= bill.selfReading.fromDay && day <= bill.selfReading.toDay;
+}
+
+function autopaySkipBody(event: PaymentEvent): string {
+  if (event.flagged) return "Factura pare greșită, așa că nu am plătit-o automat. Verific-o și confirmă plata doar dacă e corectă.";
+  if (event.autopayLimit !== undefined && event.amount > event.autopayLimit) {
+    return `Suma de ${fmtRon(event.amount)} depășește limita ta de ${fmtRon(event.autopayLimit)}. Confirmă plata din aplicație dacă suma e corectă.`;
+  }
+  return "Cardul ales pentru plata automată nu mai e valabil. Alege alt card și confirmă plata.";
 }
 
 export function buildNotifications(input: NotificationInput): AppNotification[] {
@@ -72,6 +117,18 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
         href: `/facturi/${b.id}`,
       });
     }
+    const missing = findMissingBill(b, input.connections, today);
+    if (missing) {
+      list.push({
+        id: `missing-${b.id}-${missing.month}`,
+        tone: "warning",
+        icon: "file",
+        title: `${b.provider} nu a trimis încă factura lunii ${missing.label}`,
+        body: `De obicei o primești în jurul datei de ${missing.usualDay}. Verifică legătura cu furnizorul, ca să nu ratezi scadența.`,
+        date: today,
+        href: "/facturi/furnizori",
+      });
+    }
   }
 
   for (const c of input.connections) {
@@ -89,9 +146,41 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
 
   const trialTargets = subs.filter((s) => trialDaysLeft(s, today) !== null).map((s) => s.id);
 
+  const skipped = new Map<string, AutopayLogEntry>();
+  for (const entry of input.autopayLog ?? []) {
+    if (entry.kind === "skipped" && entry.eventId) skipped.set(entry.eventId, entry);
+  }
+
   for (const r of dueReminders(input.events, today, input.settings.reminderDays)) {
     const e = r.event;
-    if (r.kind === "flagged" || trialTargets.includes(e.targetId)) continue;
+    const skip = skipped.get(e.id);
+    if (skip && !r.overdue) {
+      list.push({
+        id: `autoskip-${e.id}`,
+        tone: "warning",
+        icon: "shield",
+        title: `Plata automată nu s-a făcut: ${e.title}`,
+        body: autopaySkipBody(e),
+        date: skip.at.slice(0, 10),
+        href: e.href,
+      });
+      continue;
+    }
+    if (r.kind === "flagged") {
+      if (e.autopay === "blocked") {
+        list.push({
+          id: `autoblock-${e.id}`,
+          tone: "warning",
+          icon: "shield",
+          title: `Plata automată s-a oprit: ${e.title}`,
+          body: "Factura pare greșită, așa că nu o plătim automat. Verific-o și decide tu.",
+          date: today,
+          href: e.href,
+        });
+      }
+      continue;
+    }
+    if (trialTargets.includes(e.targetId)) continue;
     if (r.kind === "auto") {
       if (r.daysLeft > (e.autopayNotice ?? 3)) continue;
       list.push({
@@ -214,12 +303,24 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
   for (const t of input.tickets) {
     if (t.houseId !== input.houseId) continue;
     const bill = input.bills.find((b) => b.id === t.billId);
+    if (t.stage === "stornata") {
+      list.push({
+        id: `ticket-${t.id}-${t.stage}`,
+        tone: "success",
+        icon: "check",
+        title: `${bill?.provider ?? "Furnizorul"} a emis factura storno`,
+        body: `Ai economisit ${fmtRon(t.disputedAmount)}. Factura corectă este de ${fmtRon(t.paidAmount)}.`,
+        date: (t.resolvedAt ?? t.createdAt).slice(0, 10),
+        href: `/facturi/${t.billId}`,
+      });
+      continue;
+    }
     list.push({
       id: `ticket-${t.id}-${t.stage}`,
       tone: "info",
       icon: "mail",
       title: t.stage === "trimisa" ? `Sesizare trimisă către ${bill?.provider ?? "furnizor"}` : `${bill?.provider ?? "Furnizorul"} analizează sesizarea ta`,
-      body: `${fmtRon(t.disputedAmount)} rămân înghețați. Termen legal de răspuns: ${daysLabel(t.legalDeadlineDays)}.`,
+      body: `Ai cerut suspendarea plății pentru ${fmtRon(t.disputedAmount)} până la soluționarea sesizării. Termen legal de răspuns: ${bill ? legalDeadlineLabel(bill) : daysLabel(t.legalDeadlineDays)}.`,
       date: t.createdAt.slice(0, 10),
       href: `/facturi/${t.billId}`,
     });

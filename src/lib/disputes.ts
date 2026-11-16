@@ -18,6 +18,24 @@ export function legalDeadlineDays(bill: Bill): 15 | 30 {
   return bill.kind === "telecom" || bill.kind === "salubritate" ? 30 : 15;
 }
 
+export function hasWorkingDayDeadline(bill: Bill): boolean {
+  return bill.kind === "curent" || bill.kind === "gaz";
+}
+
+export function legalDeadlineLabel(bill: Bill): string {
+  if (hasWorkingDayDeadline(bill)) return "15 zile lucrătoare";
+  return legalDeadlineDays(bill) === 30 ? "30 de zile" : "15 zile";
+}
+
+export const DISPUTE_REQUEST = "Am achitat suma necontestată și solicit suspendarea plății diferenței până la soluționarea sesizării.";
+
+export function disputeRequest(paidAmount: number, disputedAmount: number): string {
+  if (paidAmount <= 0) {
+    return `Contest întreaga sumă de ${fmtRon(disputedAmount)} și solicit suspendarea plății până la soluționarea sesizării, precum și emiterea facturii storno.`;
+  }
+  return `${DISPUTE_REQUEST} Suma achitată: ${fmtRon(paidAmount)}. Diferența contestată: ${fmtRon(disputedAmount)}, pentru care solicit emiterea facturii storno.`;
+}
+
 export function percentOverAverage(bill: Bill): number {
   return Math.round(((bill.amount - bill.averageAmount) / bill.averageAmount) * 100);
 }
