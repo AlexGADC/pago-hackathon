@@ -132,3 +132,25 @@ export interface ExpiryItem {
 export type IndexValidation =
   | { ok: true; consumption: number; correctAmount: number; disputedAmount: number }
   | { ok: false; error: string };
+
+// ---------- Statusul plăților și conexiunile cu furnizorii ----------
+
+export type PaymentStatus = "in_asteptare" | "confirmata" | "esuata";
+
+export interface PaymentRecord {
+  eventId: string;
+  supplier: string;
+  amount: number;
+  status: PaymentStatus;
+  createdAt: string; // ISO
+  reference: string;
+}
+
+export type ConnectionStatus = "conectat" | "sincronizare" | "deconectat";
+
+export interface SupplierConnection {
+  provider: string;
+  status: ConnectionStatus;
+  lastSyncAt: string; // ISO
+  problem?: string;
+}

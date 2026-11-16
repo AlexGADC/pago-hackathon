@@ -21,7 +21,7 @@ export function FamilyScreen() {
             <span className="text-2xl">{m.avatar}</span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{m.name}</p>
-              <p className="text-xs text-slate-500">{ROLE_LABEL[m.role]}</p>
+              <p className="text-xs text-muted">{ROLE_LABEL[m.role]}</p>
             </div>
             <span className="text-sm font-bold text-family-coral">{m.points} pct</span>
           </div>
@@ -35,7 +35,7 @@ export function FamilyScreen() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-bold">{m.title}</p>
-                <p className="text-sm text-slate-500">{m.description}</p>
+                <p className="text-sm text-muted">{m.description}</p>
               </div>
               <span className="shrink-0 rounded-full bg-family-indigo/10 px-2.5 py-0.5 text-xs font-bold text-family-indigo">+{m.points}</span>
             </div>
