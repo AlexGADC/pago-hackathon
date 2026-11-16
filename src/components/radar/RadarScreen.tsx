@@ -13,6 +13,17 @@ export function RadarScreen() {
   const subs = subscriptions.filter((s) => s.houseId === activeHouse);
   const exps = expiries.filter((e) => e.houseId === activeHouse);
 
+  // Radar: expirările auto (RCA, Rovinietă, ITP) + reînnoirile abonamentelor (Netflix, Disney+ etc.), sortate după zile rămase.
+  const radarItems = [
+    ...exps.map((e) => ({ id: e.id, kind: e.kind, title: e.vehicle, date: e.expiresOn })),
+    ...subs.map((s) => ({
+      id: `radar-${s.id}`,
+      kind: s.trialEndsOn ? "Free Trial" : "Reînnoire",
+      title: s.name,
+      date: s.trialEndsOn ?? s.renewsOn,
+    })),
+  ].sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
+
   return (
     <div>
       <SectionTitle>SubKill · Abonamente</SectionTitle>
@@ -29,15 +40,15 @@ export function RadarScreen() {
         ))}
       </Card>
 
-      <SectionTitle>Radar expirări</SectionTitle>
+      <SectionTitle>Radar expirări & reînnoiri</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
-        {exps.map((e) => {
-          const d = daysUntil(e.expiresOn);
+        {radarItems.map((r) => {
+          const d = daysUntil(r.date);
           return (
-            <Card key={e.id} className={d <= 14 ? "border-alert/40 bg-alert-bg" : ""}>
-              <p className="text-xs font-bold text-slate-500">{e.kind}</p>
+            <Card key={r.id} className={d <= 14 ? "border-alert/40 bg-alert-bg" : ""}>
+              <p className="text-xs font-bold text-slate-500">{r.kind}</p>
               <p className={`text-2xl font-extrabold ${d <= 14 ? "text-alert" : ""}`}>{d} zile</p>
-              <p className="text-xs text-slate-500">{e.vehicle}</p>
+              <p className="text-xs text-slate-500">{r.title}</p>
             </Card>
           );
         })}

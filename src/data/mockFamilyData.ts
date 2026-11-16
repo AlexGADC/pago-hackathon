@@ -163,6 +163,7 @@ export const subscriptions: Subscription[] = [
   { id: "sub-icloud", houseId: "acasa", name: "iCloud 200 GB", monthlyPrice: 14.99, renewsOn: "2026-12-02", trialEndsOn: "2026-11-19" },
   { id: "sub-sala", houseId: "acasa", name: "Sală 18GYM", monthlyPrice: 149, renewsOn: "2026-12-01" },
   { id: "sub-tv-bunici", houseId: "bunici", name: "Digi TV", monthlyPrice: 35, renewsOn: "2026-11-25" },
+  { id: "sub-disney", houseId: "acasa", name: "Disney+", monthlyPrice: 34.99, renewsOn: "2026-11-27" },
 ];
 
 export const expiries: ExpiryItem[] = [
