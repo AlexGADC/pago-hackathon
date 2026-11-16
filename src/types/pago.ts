@@ -29,8 +29,8 @@ export interface MonthlyAmount {
 /** Date extrase de Pago din PDF-ul facturii (simulate). */
 export interface MeterReading {
   unit: "kWh" | "m³";
-  billedIndex: number; // indexul facturat (contestat), ex: 14850
-  lastConfirmedIndex: number; // ultimul index real confirmat, ex: 12150
+  billedIndex: number; // indexul facturat (contestat), ex: 1485
+  lastConfirmedIndex: number; // ultimul index real confirmat, ex: 5
   pricePerUnit: number; // RON / unitate
 }
 
