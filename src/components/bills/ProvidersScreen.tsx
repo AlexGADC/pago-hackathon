@@ -12,6 +12,7 @@ import { useFamily } from "@/context/FamilyContext";
 import { PROVIDER_CATALOG, UTILITY_LABEL, type ProviderTemplate } from "@/data/catalog";
 import { fmtRon } from "@/lib/disputes";
 import { fmtDateTime } from "@/lib/format";
+import { findMissingBill } from "@/lib/notifications";
 import type { UtilityKind } from "@/types/pago";
 
 const KINDS: UtilityKind[] = ["curent", "gaz", "apa", "telecom", "salubritate", "intretinere"];
@@ -23,7 +24,7 @@ const plain = (text: string) =>
     .toLowerCase();
 
 export function ProvidersScreen() {
-  const { house, houseConnections, houseBills, reconnect, removeProvider, connectProvider, toast } = useFamily();
+  const { house, houseConnections, houseBills, today, reconnect, removeProvider, connectProvider, toast } = useFamily();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<UtilityKind | "toate">("toate");
   const [picked, setPicked] = useState<ProviderTemplate | null>(null);
@@ -67,6 +68,7 @@ export function ProvidersScreen() {
         <Card className="flex flex-col divide-y divide-line">
           {houseConnections.map((c) => {
             const bill = houseBills.find((b) => b.provider === c.provider);
+            const missing = bill ? findMissingBill(bill, houseConnections, today) : null;
             return (
               <div key={c.provider} className="py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
@@ -82,6 +84,11 @@ export function ProvidersScreen() {
                   </div>
                 </div>
                 {c.problem && <p className="mt-2 text-xs text-alert">{c.problem}</p>}
+                {missing && (
+                  <p className="mt-2 text-xs font-semibold text-warning">
+                    Factura lunii {missing.label} nu a sosit încă. De obicei apare în jurul datei de {missing.usualDay}. Verifică în contul tău de la {c.provider} dacă a fost emisă.
+                  </p>
+                )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {c.status === "deconectat" && (
                     <button onClick={() => reconnect(c.provider, c.houseId)} className="pill pill-primary">

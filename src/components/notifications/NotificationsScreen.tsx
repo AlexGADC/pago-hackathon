@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BellOff, CheckCircle2, Clock3, Flag, Gauge, Gift, Mail, Moon, ShieldAlert, TrendingUp, Unplug, Wallet, XCircle, Zap, type LucideIcon } from "lucide-react";
+import { BellOff, CheckCircle2, Clock3, FileQuestionMark, Flag, Gauge, Gift, Mail, Moon, ShieldAlert, TrendingUp, Unplug, Wallet, XCircle, Zap, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/shared/Card";
 import { EmptyState } from "@/components/shared/Controls";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -23,6 +23,7 @@ const ICONS: Record<NotificationIcon, LucideIcon> = {
   mail: Mail,
   gauge: Gauge,
   wallet: Wallet,
+  file: FileQuestionMark,
 };
 
 const TONES: Record<NotificationTone, string> = {

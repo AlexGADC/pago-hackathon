@@ -1,5 +1,5 @@
 import { DEMO_TODAY, daysUntil, fmtRon, percentOverAverage } from "@/lib/disputes";
-import { daysLabel, fmtDay } from "@/lib/format";
+import { MONTHS, addDays, addMonths, dateParts, daysInMonth, daysLabel, fmtDay, toIso } from "@/lib/format";
 import { eventState, eventsInMonth, splitPaid, type PaymentEvent } from "@/lib/payments";
 import { dueReminders, reminderLabel } from "@/lib/reminders";
 import { isUnused, priceIncrease, trialDaysLeft, yearlyCost } from "@/lib/subscriptions";
@@ -7,7 +7,7 @@ import type { Bill, DisputeTicket, ExpiryItem, HouseId, MeterSubmission, Payment
 
 export type NotificationTone = "alert" | "warning" | "info" | "success";
 
-export type NotificationIcon = "flag" | "clock" | "bolt" | "plug" | "x" | "check" | "trend" | "gift" | "moon" | "shield" | "mail" | "gauge" | "wallet";
+export type NotificationIcon = "flag" | "clock" | "bolt" | "plug" | "x" | "check" | "trend" | "gift" | "moon" | "shield" | "mail" | "gauge" | "wallet" | "file";
 
 export interface AppNotification {
   id: string;
@@ -35,6 +35,42 @@ export interface NotificationInput {
 
 const TONE_ORDER: Record<NotificationTone, number> = { alert: 0, warning: 1, info: 2, success: 3 };
 const MAX_CONFIRMATIONS = 3;
+const MISSING_BILL_GRACE_DAYS = 3;
+const SAME_CYCLE_DAYS = 15;
+
+export function usualIssueDay(bill: Bill): number {
+  const days = [...bill.history.map((h) => h.issuedOn), bill.issueDate]
+    .filter((date): date is string => Boolean(date))
+    .map((date) => dateParts(date)[2])
+    .sort((a, b) => a - b);
+  return days[Math.floor((days.length - 1) / 2)];
+}
+
+export function missingBillMonth(bill: Bill, today: string = DEMO_TODAY): string | null {
+  const day = usualIssueDay(bill);
+  const onUsualDay = (year: number, month: number) => toIso(year, month, Math.min(day, daysInMonth(year, month)));
+  let [year, month] = dateParts(today);
+  let expected = onUsualDay(year, month);
+  while (addDays(expected, MISSING_BILL_GRACE_DAYS) >= today.slice(0, 10)) {
+    [year, month] = dateParts(addMonths(toIso(year, month, 1), -1));
+    expected = onUsualDay(year, month);
+  }
+  return bill.issueDate < addDays(expected, -SAME_CYCLE_DAYS) ? expected.slice(0, 7) : null;
+}
+
+export interface MissingBill {
+  month: string;
+  label: string;
+  usualDay: number;
+}
+
+export function findMissingBill(bill: Bill, connections: SupplierConnection[], today: string = DEMO_TODAY): MissingBill | null {
+  const connection = connections.find((c) => c.provider === bill.provider && c.houseId === bill.houseId);
+  if (connection?.status !== "conectat") return null;
+  const month = missingBillMonth(bill, today);
+  if (!month) return null;
+  return { month, label: MONTHS[dateParts(`${month}-01`)[1] - 1].toLowerCase(), usualDay: usualIssueDay(bill) };
+}
 
 export function selfReadingOpen(bill: Bill, today: string = DEMO_TODAY): boolean {
   if (!bill.selfReading || !bill.meter) return false;
@@ -70,6 +106,18 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
         body: `Fereastra de autocitire e deschisă până pe ${b.selfReading?.toDay} ale lunii. Așa plătești consumul real, nu o estimare.`,
         date: today,
         href: `/facturi/${b.id}`,
+      });
+    }
+    const missing = findMissingBill(b, input.connections, today);
+    if (missing) {
+      list.push({
+        id: `missing-${b.id}-${missing.month}`,
+        tone: "warning",
+        icon: "file",
+        title: `${b.provider} nu a trimis încă factura lunii ${missing.label}`,
+        body: `De obicei o primești în jurul datei de ${missing.usualDay}. Verifică legătura cu furnizorul, ca să nu ratezi scadența.`,
+        date: today,
+        href: "/facturi/furnizori",
       });
     }
   }

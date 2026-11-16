@@ -17,6 +17,7 @@ export type BillStatus = "normala" | "red_flag" | "contestata" | "platita_partia
 export interface MonthlyAmount {
   month: string;
   amount: number;
+  issuedOn?: string;
 }
 
 export interface MeterReading {

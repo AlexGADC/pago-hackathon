@@ -9,6 +9,7 @@ import { ScreenTitle } from "@/components/shared/PageHeader";
 import { useFamily } from "@/context/FamilyContext";
 import { fmtRon, percentOverAverage } from "@/lib/disputes";
 import { fmtDate, plural } from "@/lib/format";
+import { findMissingBill } from "@/lib/notifications";
 import { billEventId, eventState, isOverdue } from "@/lib/payments";
 import { BILL_STATUS } from "./billStatus";
 
@@ -63,6 +64,7 @@ export function BillsScreen() {
           const event = yearEvents.find((e) => e.id === billEventId(b));
           const state = event ? eventState(event) : "paid";
           const late = event ? isOverdue(event, today) : false;
+          const missing = findMissingBill(b, houseConnections, today);
           return (
             <Link
               key={b.id}
@@ -93,6 +95,11 @@ export function BillsScreen() {
                   {connection && <ConnectionBadge status={connection.status} />}
                   {event?.record && <PaymentStatusTag status={event.record.status} />}
                 </div>
+              )}
+              {missing && (
+                <p className="mt-2 text-xs font-semibold text-warning">
+                  Factura lunii {missing.label} nu a sosit încă · de obicei apare în jurul datei de {missing.usualDay}
+                </p>
               )}
               {flagged && (
                 <p className="mt-2 text-xs font-semibold text-alert">

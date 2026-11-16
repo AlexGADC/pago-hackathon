@@ -1,3 +1,5 @@
+import { daysUntil } from "@/lib/disputes";
+import { addDays, addMonths, dateParts, daysInMonth, toIso } from "@/lib/format";
 import type {
   AutopayLogEntry,
   AutopayRule,
@@ -25,11 +27,26 @@ export const AVATAR_CHOICES = ["/avatars/acasa.svg", "/avatars/bunici.svg", "/av
 
 const HISTORY_MONTHS = ["2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
 
-export function monthlyHistory(base: number, jitter: number[] = []): MonthlyAmount[] {
-  return HISTORY_MONTHS.map((month, i) => ({ month, amount: Math.round(base + (jitter[i] ?? 0)) }));
+export function monthlyHistory(base: number, jitter: number[] = [], shiftMonths = 0): MonthlyAmount[] {
+  return HISTORY_MONTHS.map((month, i) => ({ month: addMonths(`${month}-01`, shiftMonths).slice(0, 7), amount: Math.round(base + (jitter[i] ?? 0)) }));
 }
 
-export const bills: Bill[] = [
+const ISSUE_DAY_SHIFT = [0, 1, -1, 0, 0, 2, 0, -1, 0, 1, 0, 0];
+
+export function withIssueDates(bill: Bill): Bill {
+  const lead = daysUntil(bill.dueDate, bill.issueDate);
+  const dueDay = dateParts(bill.dueDate)[2];
+  return {
+    ...bill,
+    history: bill.history.map((h, i) => {
+      const [year, month] = dateParts(`${h.month}-01`);
+      const due = toIso(year, month, Math.min(dueDay, daysInMonth(year, month)));
+      return { ...h, issuedOn: addDays(due, ISSUE_DAY_SHIFT[i % ISSUE_DAY_SHIFT.length] - lead) };
+    }),
+  };
+}
+
+const currentBills: Bill[] = [
   {
     id: "bill-electrica",
     houseId: "acasa",
@@ -135,7 +152,26 @@ export const bills: Bill[] = [
     meter: { unit: "m³", billedIndex: 812, lastConfirmedIndex: 803, pricePerUnit: 6.4 },
     selfReading: { fromDay: 20, toDay: 25 },
   },
+  {
+    id: "bill-hidro-bunici",
+    houseId: "bunici",
+    provider: "Hidroelectrica",
+    kind: "curent",
+    flow: "A",
+    invoiceNumber: "HE-2026-5521870",
+    clientCode: "5900417723",
+    issueDate: "2026-10-08",
+    dueDate: "2026-10-27",
+    amount: 142,
+    averageAmount: 140,
+    history: monthlyHistory(140, [18, 26, 30, 22, 6, -8, -14, -10, -4, 2, 8, 4], -1),
+    status: "platita",
+    meter: { unit: "kWh", billedIndex: 8642, lastConfirmedIndex: 8484, pricePerUnit: 0.9 },
+    selfReading: { fromDay: 20, toDay: 25 },
+  },
 ];
+
+export const bills: Bill[] = currentBills.map(withIssueDates);
 
 export const familyMembers: FamilyMember[] = [
   { id: "m-alex", name: "Alexandru", role: "admin", avatar: "👨", points: 1200 },
@@ -337,6 +373,7 @@ export const supplierConnections: SupplierConnection[] = [
   { provider: "Asociația de proprietari M4", houseId: "acasa", status: "conectat", lastSyncAt: "2026-11-12T08:00:00" },
   { provider: "Retim Salubritate", houseId: "bunici", status: "conectat", lastSyncAt: "2026-11-14T08:00:00" },
   { provider: "Compania de Apă Arieș", houseId: "bunici", status: "conectat", lastSyncAt: "2026-11-15T08:00:00" },
+  { provider: "Hidroelectrica", houseId: "bunici", status: "conectat", lastSyncAt: "2026-11-15T08:00:00" },
 ];
 
 export const paymentMethods: PaymentMethod[] = [
