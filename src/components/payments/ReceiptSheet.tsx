@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { PaymentRecord } from "@/types/pago";
 import { fmtRon } from "@/lib/disputes";
@@ -7,7 +8,7 @@ import { PaymentStatusTag } from "./PaymentStatus";
 
 export function ReceiptSheet({ record, onClose }: { record: PaymentRecord; onClose: () => void }) {
   const when = new Date(record.createdAt).toLocaleString("ro-RO", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
       <div className="w-full max-w-[360px] rounded-card bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
@@ -36,6 +37,7 @@ export function ReceiptSheet({ record, onClose }: { record: PaymentRecord; onClo
         </dl>
         <p className="mt-5 text-xs text-muted">Chitanță demonstrativă. Plata nu este procesată real în acest prototip.</p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
