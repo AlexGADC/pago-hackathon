@@ -4,20 +4,27 @@ Aplicația Pago pentru familie: toate plățile casei într-un singur loc.
 
 ## Scopul
 
-Aducem cât mai mulți utilizatori să plătească direct din aplicația Pago: facturi, abonamente, RCA, rovinietă, ITP.
+Aducem cât mai mulți utilizatori să plătească direct din aplicația Pago: facturi, abonamente, RCA, rovinietă, ITP, asigurarea locuinței, taxe și reîncărcări.
 
 ## Ce face aplicația
 
-Meniul de jos are patru secțiuni: **Acasă**, **Facturi**, **Abonamente**, **Asigurări**. Profilul se schimbă din iconița de sus, în stânga.
+Meniul de jos are patru secțiuni: **Acasă**, **Facturi**, **Abonamente**, **Asigurări**. Profilul se schimbă din iconița de sus, în stânga. Clopoțelul din dreapta deschide notificările.
 
-- **Acasă:** calendarul lunii cu toate plățile (facturi, abonamente, RCA, rovinietă, ITP), suma rămasă de plătit și lista plăților nepaiate din lună. Apăsând pe o zi vezi plățile ei și totalul. De aici pornește pagina de statistici.
-- **Facturi:** lista facturilor, cu verificarea lor față de media ultimelor 12 luni. Dacă o factură pare greșită, o poți contesta: introduci indexul de pe contor și plătești doar suma corectă. Facturile fără probleme se plătesc direct din aplicație.
-- **Abonamente:** abonamentele casei, cu plata lunară sau anuală, perioadele de trial și scumpirile.
-- **Asigurări:** RCA, rovinietă și ITP, cu zilele rămase până la expirare și costul anual.
-- **Statistici** (din Acasă): cheltuielile pe an și pe categorie, plata anuală estimată și costul mediu lunar.
-- **Profiluri:** casa ta și casa bunicilor, fiecare cu propria poză. Din profil poți schimba locuința.
+- **Acasă:** calendarul lunii cu toate plățile, suma totală și suma rămasă, reminderele și lista plăților din lună. Poți plăti una câte una sau pe toate odată. Apăsând pe o zi vezi plățile ei și totalul.
+- **Facturi:** facturile de la furnizorii conectați, verificate față de media ultimelor 12 luni. Plătești din aplicație, trimiți indexul, activezi plata automată sau împarți factura cu familia. Dacă o factură pare greșită, o contești și plătești doar suma corectă.
+- **Abonamente:** toate abonamentele, lunare, trimestriale sau anuale. Le adaugi, le pui pe pauză, le anulezi sau le reactivezi. Aplicația te anunță când se termină un trial, când un abonament se scumpește și când nu l-ai mai folosit.
+- **Asigurări:** RCA, rovinietă, ITP și PAD, cu zilele rămase. Reînnoiești din aplicație și compari ofertele.
+- **Plata:** un singur ecran pentru orice plată, cu cardul ales, punctele de reducere și comisionul afișat. Urmărești plata pas cu pas până ajunge la furnizor și primești chitanță. Dacă plata eșuează, vezi motivul și reîncerci.
+- **Plăți automate:** cu limită de siguranță, anunț înainte de fiecare plată și jurnal.
+- **Istoric:** toate plățile, cu căutare, filtre și export.
+- **Notificări și remindere:** cu 7 zile, 3 zile și în ziua scadenței. Pragurile se schimbă din setări.
+- **Statistici:** cheltuielile pe an și pe categorie, costul mediu lunar și bugetul lunii.
+- **Alte plăți:** reîncărcare cartelă, rovinietă, taxă de pod, taxe și impozite locale.
+- **Familie:** membrii, cheltuielile împărțite și misiunile cu puncte.
+- **Profiluri:** fiecare locuință cu plățile ei. Poți adăuga un profil nou.
+- **Ajutor:** întrebări frecvente și suport în aplicație.
 
-Categoriile au culori fixe: **Facturi** albastru, **Mașini** verde (asigurările), **Abonamente** roșu.
+Categoriile au culori fixe: **Facturi** albastru, **Asigurări** verde, **Abonamente** roșu, **Alte plăți** chihlimbar.
 
 ## Rulare
 
@@ -28,19 +35,32 @@ npm run dev
 
 Apoi deschide [http://localhost:3000](http://localhost:3000).
 
+Pentru telefon, în aceeași rețea Wi-Fi:
+
+```bash
+npm run build
+npm start -- -H 0.0.0.0
+```
+
+Teste:
+
+```bash
+npm test
+```
+
+Datele demo se pot readuce la starea inițială din **Profil**, cu „Resetează demo”.
+
 ## Structură
 
-- `src/app/`: paginile aplicației (Acasă, Facturi, Abonamente, Asigurări, Statistici, Familie)
+- `src/app/`: paginile aplicației
 - `src/components/`: ecranele și componentele vizuale
-- `src/context/`: starea aplicației
-- `src/data/`: date simulate (facturi, abonamente, expirări, profiluri)
-- `src/lib/`: logica de calcul (calendar și plăți, validarea indexului, sume, zile rămase)
+- `src/context/`: starea aplicației și acțiunile ei
+- `src/data/`: date simulate și cataloage (furnizori, servicii, oferte)
+- `src/lib/`: logica de calcul (calendar, plăți, remindere, abonamente, istoric)
 - `src/types/`: tipurile comune
 - `public/avatars/`: pozele de profil
-- `CLAUDE.md`: specificația completă și regulile de design
+- `CLAUDE.md`: specificația completă și regulile de lucru
 
 ## Stadiu
 
-Prototip pentru hackathon. Datele sunt simulate, iar plata este demonstrată, nu procesată.
-
-Urmează: remindere cu mai multe praguri (7, 3 zile și în ziua scadenței) și statusuri clare pentru fiecare plată, până ajunge la furnizor.
+Prototip pentru hackathon. Datele sunt simulate, iar plata este demonstrată, nu procesată. Nu există încă backend, conturi sau conectare reală la furnizori.

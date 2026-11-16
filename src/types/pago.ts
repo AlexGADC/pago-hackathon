@@ -1,63 +1,59 @@
-// Contractul comun Frontend <-> Backend. Modificați doar de comun acord (pe main).
-
-export type HouseId = "acasa" | "bunici";
+export type HouseId = string;
 
 export interface House {
   id: HouseId;
-  name: string; // "Casa Noastră"
-  emoji: string; // "🏠"
+  name: string;
+  emoji: string;
   address: string;
-  avatar: string; // cale în public/avatars
+  avatar: string;
 }
 
 export type UtilityKind = "curent" | "gaz" | "apa" | "salubritate" | "telecom" | "intretinere";
 
-/** Flux A = utilitate cu contor (index introdus manual). Flux B = fără contor (confirmare 1 tap). */
 export type DisputeFlow = "A" | "B";
 
-export type BillStatus =
-  | "normala" // ✅ în media ultimelor 12 luni
-  | "red_flag" // 🚨 anomalie detectată
-  | "contestata" // sesizare trimisă, diferență înghețată
-  | "platita_partial" // s-a plătit suma necontestată
-  | "platita";
+export type BillStatus = "normala" | "red_flag" | "contestata" | "platita_partial" | "platita";
 
 export interface MonthlyAmount {
-  month: string; // "2026-01"
-  amount: number; // RON
+  month: string;
+  amount: number;
 }
 
-/** Date extrase de Pago din PDF-ul facturii (simulate). */
 export interface MeterReading {
   unit: "kWh" | "m³";
-  billedIndex: number; // indexul facturat (contestat), ex: 1485
-  lastConfirmedIndex: number; // ultimul index real confirmat, ex: 5
-  pricePerUnit: number; // RON / unitate
+  billedIndex: number;
+  lastConfirmedIndex: number;
+  pricePerUnit: number;
 }
 
 export interface Anomaly {
-  reason: string; // explicația pe românește
-  expectedAmount: number; // suma corectă estimată (ce se poate plăti acum)
-  /** Flux B: liniile din PDF suspectate. */
+  reason: string;
+  expectedAmount: number;
   suspiciousLines?: string[];
+}
+
+export interface SelfReadingWindow {
+  fromDay: number;
+  toDay: number;
 }
 
 export interface Bill {
   id: string;
   houseId: HouseId;
-  provider: string; // "Electrica Furnizare"
+  provider: string;
   kind: UtilityKind;
   flow: DisputeFlow;
   invoiceNumber: string;
   clientCode: string;
-  issueDate: string; // ISO
-  dueDate: string; // ISO
-  amount: number; // RON facturat
-  averageAmount: number; // media pe 12 luni
-  history: MonthlyAmount[]; // ultimele 12 luni
+  issueDate: string;
+  dueDate: string;
+  amount: number;
+  averageAmount: number;
+  history: MonthlyAmount[];
   status: BillStatus;
-  meter?: MeterReading; // doar Flux A
-  anomaly?: Anomaly; // doar dacă status === "red_flag"
+  meter?: MeterReading;
+  anomaly?: Anomaly;
+  selfReading?: SelfReadingWindow;
 }
 
 export type TicketStage = "trimisa" | "in_analiza" | "stornata";
@@ -68,14 +64,14 @@ export interface DisputeTicket {
   id: string;
   billId: string;
   houseId: HouseId;
-  createdAt: string; // ISO
+  createdAt: string;
   stage: TicketStage;
   legalDeadlineDays: 15 | 30;
   confidence: ConfidenceLabel;
-  realIndex?: number; // Flux A
-  disputedAmount: number; // diferența înghețată
-  paidAmount: number; // suma necontestată plătită
-  message: string; // sesizarea către furnizor
+  realIndex?: number;
+  disputedAmount: number;
+  paidAmount: number;
+  message: string;
 }
 
 export type MemberRole = "admin" | "junior" | "protejat";
@@ -84,13 +80,9 @@ export interface FamilyMember {
   id: string;
   name: string;
   role: MemberRole;
-  avatar: string; // emoji
-  points: number; // contribuția la Family Pool
-}
-
-export interface PoolGoal {
-  target: number; // ex: 3000
-  label: string; // "-50 RON la curent sau donație Salvați Copiii"
+  avatar: string;
+  points: number;
+  pending?: boolean;
 }
 
 export type MissionKind = "autocitire" | "eco_streak" | "bounty";
@@ -105,52 +97,180 @@ export interface Mission {
   completed: boolean;
 }
 
+export type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+export type SubscriptionStatus = "activ" | "pauza" | "anulat";
+
+export type SubscriptionCategory = "streaming" | "muzica" | "cloud" | "software" | "sport" | "tv" | "altele";
+
 export interface Subscription {
   id: string;
   houseId: HouseId;
-  name: string; // "Netflix"
-  monthlyPrice: number;
-  previousPrice?: number; // dacă s-a scumpit
-  renewsOn: string; // ISO
-  trialEndsOn?: string; // ISO, dacă e Free Trial
-  billing?: "monthly" | "yearly"; // implicit lunar; anual = o plată pe an de monthlyPrice × 12
+  name: string;
+  price: number;
+  cycle: BillingCycle;
+  renewsOn: string;
+  category: SubscriptionCategory;
+  status: SubscriptionStatus;
+  startedOn?: string;
+  statusChangedOn?: string;
+  previousPrice?: number;
+  priceChangedOn?: string;
+  trialEndsOn?: string;
+  lastUsedDaysAgo?: number;
+  sharedWith?: string[];
 }
 
-export type ExpiryKind = "RCA" | "Rovinietă" | "ITP";
+export type ExpiryKind = "RCA" | "Rovinietă" | "ITP" | "PAD";
 
 export interface ExpiryItem {
   id: string;
   houseId: HouseId;
   kind: ExpiryKind;
-  vehicle: string; // "Dacia Logan B-123-POP"
-  expiresOn: string; // ISO
-  price: number; // RON, costul anual
+  subject: string;
+  expiresOn: string;
+  price: number;
+  provider?: string;
 }
-
-// ---------- Validare index (Flux A) ----------
 
 export type IndexValidation =
   | { ok: true; consumption: number; correctAmount: number; disputedAmount: number }
   | { ok: false; error: string };
 
-// ---------- Statusul plăților și conexiunile cu furnizorii ----------
+export type PaymentCategory = "utilitati" | "abonamente" | "asigurari" | "servicii";
 
-export type PaymentStatus = "in_asteptare" | "confirmata" | "esuata";
+export type TargetKind = "bill" | "subscription" | "expiry" | "extra";
+
+export type PaymentStatus = "procesare" | "trimisa" | "confirmata" | "esuata";
+
+export interface RenewalPatch {
+  expiresOn: string;
+  price: number;
+  provider?: string;
+}
 
 export interface PaymentRecord {
+  id: string;
   eventId: string;
-  supplier: string;
+  targetId?: string;
+  targetKind: TargetKind;
+  houseId: HouseId;
+  title: string;
+  payee: string;
+  category: PaymentCategory;
   amount: number;
+  fee: number;
+  discount: number;
+  pointsUsed: number;
+  pointsEarned: number;
+  methodId: string;
+  methodLabel: string;
   status: PaymentStatus;
-  createdAt: string; // ISO
+  failureReason?: string;
+  createdAt: string;
   reference: string;
+  auto?: boolean;
+  external?: boolean;
+  batchId?: string;
+  renew?: RenewalPatch;
+}
+
+export interface CheckoutItem {
+  eventId: string;
+  targetId?: string;
+  targetKind: TargetKind;
+  houseId: HouseId;
+  title: string;
+  subtitle?: string;
+  amount: number;
+  category: PaymentCategory;
+  renew?: RenewalPatch;
 }
 
 export type ConnectionStatus = "conectat" | "sincronizare" | "deconectat";
 
 export interface SupplierConnection {
   provider: string;
+  houseId: HouseId;
   status: ConnectionStatus;
-  lastSyncAt: string; // ISO
+  lastSyncAt: string;
   problem?: string;
+}
+
+export type CardBrand = "visa" | "mastercard";
+
+export interface PaymentMethod {
+  id: string;
+  brand: CardBrand;
+  last4: string;
+  holder: string;
+  expMonth: number;
+  expYear: number;
+  label: string;
+  isDefault: boolean;
+}
+
+export interface AutopayRule {
+  targetId: string;
+  targetKind: TargetKind;
+  enabled: boolean;
+  maxAmount: number;
+  methodId: string;
+  noticeDays: number;
+  createdAt: string;
+}
+
+export interface AutopayLogEntry {
+  id: string;
+  targetId: string;
+  at: string;
+  text: string;
+}
+
+export interface NotificationChannels {
+  push: boolean;
+  email: boolean;
+  sms: boolean;
+}
+
+export interface Settings {
+  reminderDays: number[];
+  channels: NotificationChannels;
+  appLock: boolean;
+  monthlyBudget: number | null;
+  monthlySummary: boolean;
+}
+
+export interface MeterSubmission {
+  billId: string;
+  index: number;
+  submittedAt: string;
+}
+
+export interface SplitShare {
+  name: string;
+  memberId?: string;
+  amount: number;
+  paid: boolean;
+}
+
+export interface SplitRequest {
+  id: string;
+  houseId: HouseId;
+  title: string;
+  total: number;
+  shares: SplitShare[];
+  createdAt: string;
+  link: string;
+}
+
+export type SupportStatus = "deschis" | "raspuns";
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+  status: SupportStatus;
+  reply?: string;
 }

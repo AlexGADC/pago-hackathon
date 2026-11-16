@@ -1,8 +1,5 @@
-// Logică pură, fără React — folosită și de UI, și de API.
-
 import type { Bill, IndexValidation } from "@/types/pago";
 
-/** Flux A: indexul real trebuie să fie între ultimul index confirmat și indexul contestat. */
 export function validateIndex(bill: Bill, realIndex: number): IndexValidation {
   const m = bill.meter;
   if (!m) return { ok: false, error: "Factura nu are contor." };
@@ -25,18 +22,21 @@ export function percentOverAverage(bill: Bill): number {
   return Math.round(((bill.amount - bill.averageAmount) / bill.averageAmount) * 100);
 }
 
+const wholeFormat = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 2 });
+const centsFormat = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export function fmtNum(n: number): string {
-  return new Intl.NumberFormat("ro-RO").format(n);
+  return wholeFormat.format(n);
 }
 
 export function fmtRon(n: number): string {
-  return `${fmtNum(n)} RON`;
+  const rounded = Math.round(n * 100) / 100;
+  return `${Number.isInteger(rounded) ? wholeFormat.format(rounded) : centsFormat.format(rounded)} RON`;
 }
 
-/** Data „de azi” fixă pentru demo: zilele rămase arată la fel la fiecare prezentare (și permite prerender). */
 export const DEMO_TODAY = "2026-11-16";
 
 export function daysUntil(iso: string, from: string = DEMO_TODAY): number {
-  const ms = new Date(iso).getTime() - new Date(from).getTime();
+  const ms = new Date(iso.slice(0, 10)).getTime() - new Date(from.slice(0, 10)).getTime();
   return Math.ceil(ms / 86_400_000);
 }

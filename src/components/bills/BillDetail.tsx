@@ -1,48 +1,60 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { AlertTriangle, ArrowLeft, FileText, RefreshCw, Snowflake } from "lucide-react";
-import { Card, Tag } from "@/components/shared/Card";
+import { AlertTriangle, FileText, RefreshCw, Users } from "lucide-react";
+import { AutopayCard } from "@/components/payments/AutopayCard";
 import { ConnectionBadge, PaymentStatusTag } from "@/components/payments/PaymentStatus";
 import { ReceiptSheet } from "@/components/payments/ReceiptSheet";
+import { SplitSheet } from "@/components/payments/SplitSheet";
+import { Card, Tag } from "@/components/shared/Card";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useFamily } from "@/context/FamilyContext";
-import { fmtRon, percentOverAverage } from "@/lib/disputes";
+import { UTILITY_LABEL } from "@/data/catalog";
+import { daysUntil, fmtRon, percentOverAverage } from "@/lib/disputes";
+import { MONTHS, daysLabel, fmtDate, fmtDay } from "@/lib/format";
+import { billEventId, buildEvents, eventState, isOverdue, toCheckoutItem } from "@/lib/payments";
 import type { Bill, DisputeTicket } from "@/types/pago";
 import { BILL_STATUS } from "./billStatus";
 import { DisputeFlowA } from "./DisputeFlowA";
 import { DisputeFlowB } from "./DisputeFlowB";
 import { DisputeSentCard } from "./DisputeSentCard";
+import { SelfReadingCard } from "./SelfReadingCard";
+import { TicketTracker } from "./TicketTracker";
 
 export function BillDetail({ billId }: { billId: string }) {
-  const { bills, tickets, payments, connections, payEvent, reconnect } = useFamily();
+  const { bills, tickets, connections, ledger, today, openCheckout, reconnect, payExternally, toast } = useFamily();
   const bill = bills.find((b) => b.id === billId);
-  const ticket = tickets.find((t) => t.billId === billId);
   const [justSent, setJustSent] = useState<DisputeTicket | null>(null);
-  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
 
   if (!bill) {
     return (
-      <div className="pt-6">
-        <BackHeader title="Factură" />
-        <Card>Nu am găsit factura.</Card>
+      <div className="flex flex-col gap-4">
+        <PageHeader title="Factură" back="/facturi" />
+        <Card>Nu am găsit factura. Verifică în Furnizori dacă mai este conectat contul.</Card>
       </div>
     );
   }
 
   const status = BILL_STATUS[bill.status];
-  const eventId = `${bill.id}-${bill.dueDate.slice(0, 7)}`;
-  const record = payments.find((p) => p.eventId === eventId);
-  const receipt = payments.find((p) => p.eventId === receiptId) ?? null;
-  const connection = connections.find((c) => c.provider === bill.provider);
-  const paidNow = record?.status === "confirmata";
+  const ticket = tickets.find((t) => t.billId === bill.id);
+  const connection = connections.find((c) => c.provider === bill.provider && c.houseId === bill.houseId);
+  const event = buildEvents(ledger, bill.houseId, Number(bill.dueDate.slice(0, 4)), today).find((e) => e.id === billEventId(bill));
+  const state = event ? eventState(event) : "paid";
+  const late = event ? isOverdue(event, today) : false;
+  const record = event?.record;
+  const monthLabel = MONTHS[Number(bill.dueDate.slice(5, 7)) - 1].toLowerCase();
 
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <BackHeader title={bill.provider} />
+    <div className="flex flex-col gap-4">
+      <PageHeader title={bill.provider} subtitle={UTILITY_LABEL[bill.kind]} back="/facturi" />
 
       <Card>
-        <Tag tone={status.tone}>{status.label}</Tag>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Tag tone={status.tone}>{status.label}</Tag>
+          {late && <Tag tone="red">Întârziată</Tag>}
+        </div>
         <div className="mt-3 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-muted">Facturat</p>
@@ -56,11 +68,21 @@ export function BillDetail({ billId }: { billId: string }) {
         {bill.status === "red_flag" && <p className="mt-2 text-sm font-semibold text-alert">+{percentOverAverage(bill)}% față de media ultimelor 12 luni</p>}
         <HistoryBars bill={bill} />
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-          <FileText size={14} /> Factura {bill.invoiceNumber} · Cod client {bill.clientCode}
+          <FileText size={14} className="shrink-0" /> Factura {bill.invoiceNumber} · Cod client {bill.clientCode}
         </p>
+        <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
+          <div>
+            <dt className="text-xs text-muted">Emisă</dt>
+            <dd className="font-semibold text-ink">{fmtDate(bill.issueDate)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted">Scadentă</dt>
+            <dd className={`font-semibold ${late ? "text-alert" : "text-ink"}`}>{fmtDate(bill.dueDate)}</dd>
+          </div>
+        </dl>
       </Card>
 
-      {connection && (
+      {connection && connection.status !== "conectat" && (
         <Card>
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-bold text-ink">Conexiunea cu {bill.provider}</p>
@@ -69,14 +91,14 @@ export function BillDetail({ billId }: { billId: string }) {
           {connection.problem && <p className="mt-2 text-sm text-alert">{connection.problem}</p>}
           <p className="mt-2 text-xs text-muted">Istoricul de facturi este păstrat, chiar dacă conexiunea e întreruptă.</p>
           {connection.status === "deconectat" && (
-            <button onClick={() => reconnect(bill.provider)} className="btn-dark mt-4 w-full">
+            <button onClick={() => reconnect(bill.provider, bill.houseId)} className="btn-dark mt-4 w-full text-sm">
               <RefreshCw size={16} /> Reconectează contul
             </button>
           )}
         </Card>
       )}
 
-      {bill.anomaly && (
+      {bill.anomaly && bill.status === "red_flag" && (
         <Card>
           <p className="mb-2 flex items-center gap-2 text-sm font-bold text-pago-blue">
             <AlertTriangle size={16} /> Ce am găsit în factură
@@ -85,29 +107,71 @@ export function BillDetail({ billId }: { billId: string }) {
         </Card>
       )}
 
-      {bill.status === "normala" && (
+      {event && state !== "flagged" && (
         <Card>
-          {record && (
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <PaymentStatusTag status={record.status} />
-              <button onClick={() => setReceiptId(record.eventId)} className="text-sm font-semibold text-pago-blue">
-                Vezi chitanța
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-bold text-ink">Plată</p>
+            {record ? <PaymentStatusTag status={record.status} /> : state === "paid" ? <Tag tone="green">Plătită</Tag> : null}
+          </div>
+
+          {state === "paid" && (
+            <>
+              <p className="mt-2 text-sm text-ink">
+                {record?.external ? "Ai marcat factura ca plătită în afara aplicației." : `Plata de ${fmtRon(event.amount)} a ajuns la ${bill.provider}.`}
+                {event.frozen > 0 ? ` Diferența de ${fmtRon(event.frozen)} rămâne înghețată până la factura storno.` : ""}
+              </p>
+              {record && (
+                <button onClick={() => setReceiptOpen(true)} className="btn-soft mt-4 w-full text-sm">
+                  Vezi chitanța
+                </button>
+              )}
+            </>
+          )}
+
+          {state === "pending" && <p className="mt-2 text-sm text-muted">Plata de {fmtRon(event.amount)} este în drum spre {bill.provider}. Te anunțăm când furnizorul o confirmă.</p>}
+
+          {state === "failed" && (
+            <>
+              <p className="mt-2 text-sm text-alert">{record?.failureReason ?? "Plata nu a ajuns la furnizor. Banii nu au plecat din cont."}</p>
+              <button onClick={() => openCheckout([toCheckoutItem(event)])} className="btn-dark mt-4 w-full text-sm">
+                Încearcă din nou
               </button>
-            </div>
+            </>
           )}
-          {paidNow ? (
-            <p className="text-sm text-ink">Plata a ajuns la {bill.provider}.</p>
-          ) : record?.status === "esuata" ? (
-            <p className="text-sm text-alert">Plata nu a ajuns la furnizor. Reconectează contul, apoi încearcă din nou.</p>
-          ) : record?.status === "in_asteptare" ? (
-            <p className="text-sm text-muted">Așteptăm confirmarea de la {bill.provider}.</p>
-          ) : (
-            <p className="text-sm text-muted">Factura e în regulă. Poți plăti direct din aplicație.</p>
+
+          {state === "auto" && (
+            <>
+              <p className="mt-2 text-sm text-muted">
+                {fmtRon(event.amount)} se plătesc automat pe {fmtDay(event.date)}. Nu trebuie să faci nimic.
+              </p>
+              <button onClick={() => openCheckout([toCheckoutItem(event)])} className="btn-soft mt-4 w-full text-sm">
+                Plătește acum
+              </button>
+            </>
           )}
-          {!paidNow && record?.status !== "in_asteptare" && (
-            <button onClick={() => payEvent(eventId, bill.provider, bill.amount)} className="btn-dark mt-4 w-full">
-              {record?.status === "esuata" ? "Încearcă din nou" : `Plătește ${fmtRon(bill.amount)}`}
-            </button>
+
+          {(state === "due" || state === "blocked") && (
+            <>
+              <p className={`mt-2 text-sm ${late ? "font-semibold text-alert" : "text-muted"}`}>
+                {late
+                  ? `Scadența a trecut de ${daysLabel(daysUntil(today, bill.dueDate))}. Plătește acum ca să eviți penalizările.`
+                  : event.frozen > 0
+                    ? `Mai ai de plătit suma necontestată. ${fmtRon(event.frozen)} rămân înghețați până la factura storno.`
+                    : "Factura e în regulă. Plătești direct din aplicație, fără comision."}
+              </p>
+              <button onClick={() => openCheckout([toCheckoutItem(event)])} className="btn-dark mt-4 w-full">
+                Plătește {fmtRon(event.amount)}
+              </button>
+              <button
+                onClick={() => {
+                  payExternally(toCheckoutItem(event));
+                  toast("Am notat plata. O găsești în Istoric.");
+                }}
+                className="mt-2 min-h-11 w-full text-sm font-semibold text-pago-blue"
+              >
+                Am plătit deja în altă parte
+              </button>
+            </>
           )}
         </Card>
       )}
@@ -115,32 +179,25 @@ export function BillDetail({ billId }: { billId: string }) {
       {bill.status === "red_flag" && bill.flow === "A" && <DisputeFlowA bill={bill} onSent={setJustSent} />}
       {bill.status === "red_flag" && bill.flow === "B" && <DisputeFlowB bill={bill} onSent={setJustSent} />}
 
-      {justSent && <DisputeSentCard ticket={justSent} provider={bill.provider} />}
-
-      {ticket && !justSent && bill.status !== "red_flag" && (
-        <Card>
-          <Tag tone="indigo">📨 Sesizare trimisă</Tag>
-          <p className="mt-3 text-sm text-ink">
-            Ai plătit <b>{fmtRon(ticket.paidAmount)}</b>. Diferența de <b>{fmtRon(ticket.disputedAmount)}</b> e înghețată până la factura storno.
-          </p>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-            <Snowflake size={14} /> {ticket.confidence} · răspuns legal în max. {ticket.legalDeadlineDays} zile
-          </p>
-        </Card>
+      {event && state === "flagged" && (
+        <button onClick={() => openCheckout([toCheckoutItem(event)], "Plătește întreaga sumă")} className="min-h-11 text-sm font-semibold text-muted underline">
+          Factura e corectă? Plătește întreaga sumă de {fmtRon(event.amount)}
+        </button>
       )}
 
-      {receipt && <ReceiptSheet record={receipt} onClose={() => setReceiptId(null)} />}
-    </div>
-  );
-}
+      {justSent && <DisputeSentCard ticket={justSent} provider={bill.provider} />}
+      {ticket && <TicketTracker ticket={ticket} provider={bill.provider} />}
 
-function BackHeader({ title }: { title: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Link href="/facturi" aria-label="Înapoi la facturi" className="grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink shadow-card">
-        <ArrowLeft size={20} />
-      </Link>
-      <h1 className="min-w-0 truncate text-xl font-bold text-ink">{title}</h1>
+      <SelfReadingCard bill={bill} />
+
+      <AutopayCard targetId={bill.id} targetKind="bill" houseId={bill.houseId} name={bill.provider} typicalAmount={bill.averageAmount} />
+
+      <button onClick={() => setSplitOpen(true)} className="btn-soft w-full text-sm">
+        <Users size={16} /> Împarte factura cu familia
+      </button>
+
+      {receiptOpen && record && <ReceiptSheet record={record} onClose={() => setReceiptOpen(false)} />}
+      <SplitSheet open={splitOpen} onClose={() => setSplitOpen(false)} defaultTitle={`${bill.provider} · ${monthLabel}`} defaultTotal={event?.amount ?? bill.amount} />
     </div>
   );
 }
@@ -149,7 +206,7 @@ function HistoryBars({ bill }: { bill: Bill }) {
   const values = [...bill.history.map((h) => h.amount), bill.amount];
   const max = Math.max(...values);
   return (
-    <div className="mt-4 flex h-16 items-end gap-1" aria-label="Istoric pe 12 luni">
+    <div className="mt-4 flex h-16 items-end gap-1" role="img" aria-label="Istoricul facturilor pe ultimele 12 luni și luna curentă">
       {values.map((v, i) => {
         const current = i === values.length - 1;
         return (

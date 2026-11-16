@@ -1,43 +1,68 @@
 "use client";
 
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
-import type { PaymentRecord } from "@/types/pago";
+import Link from "next/link";
+import { useState } from "react";
+import { Download, LifeBuoy, Users } from "lucide-react";
+import { Sheet } from "@/components/shared/Sheet";
 import { fmtRon } from "@/lib/disputes";
-import { PaymentStatusTag } from "./PaymentStatus";
+import { downloadText } from "@/lib/download";
+import { fmtDateTime } from "@/lib/format";
+import { receiptText } from "@/lib/history";
+import type { PaymentRecord } from "@/types/pago";
+import { PaymentStatusTag, PaymentTimeline } from "./PaymentStatus";
+import { SplitSheet } from "./SplitSheet";
+
+function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="shrink-0 text-muted">{label}</dt>
+      <dd className={`text-right font-semibold text-ink ${mono ? "font-mono" : ""}`}>{value}</dd>
+    </div>
+  );
+}
 
 export function ReceiptSheet({ record, onClose }: { record: PaymentRecord; onClose: () => void }) {
-  const when = new Date(record.createdAt).toLocaleString("ro-RO", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  return createPortal(
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-6" onClick={onClose}>
-      <div className="w-full max-w-[360px] rounded-card bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <p className="text-lg font-extrabold text-ink">Chitanța plății</p>
-          <button onClick={onClose} aria-label="Închide" className="grid size-9 place-items-center rounded-full bg-surface-2 text-ink">
-            <X size={18} />
+  const [splitOpen, setSplitOpen] = useState(false);
+
+  return (
+    <>
+      <Sheet open onClose={onClose} title="Chitanța plății">
+        <div className="flex items-center justify-between gap-3">
+          <PaymentStatusTag status={record.status} />
+          {record.auto && <span className="text-xs font-semibold text-muted">Plată automată</span>}
+        </div>
+        <p className="mt-3 text-3xl font-extrabold tracking-tight text-ink">{fmtRon(record.amount)}</p>
+        <p className="text-sm text-muted">{record.title}</p>
+
+        <dl className="mt-5 flex flex-col gap-2.5 text-sm">
+          <Row label="Data" value={fmtDateTime(record.createdAt)} />
+          <Row label="Metodă" value={record.methodLabel} />
+          {!record.external && <Row label="Pe extrasul bancar" value={record.payee} mono />}
+          <Row label="Comision" value={fmtRon(record.fee)} />
+          {record.discount > 0 && <Row label="Reducere din puncte" value={`−${fmtRon(record.discount)}`} />}
+          {record.pointsEarned > 0 && <Row label="Puncte câștigate" value={`+${record.pointsEarned}`} />}
+          <Row label="Referință" value={record.reference} mono />
+        </dl>
+
+        <div className="mt-5 rounded-2xl bg-surface-2 p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">Parcursul plății</p>
+          <PaymentTimeline record={record} />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button onClick={() => downloadText(`chitanta-${record.reference}.txt`, receiptText(record))} className="btn-soft text-sm">
+            <Download size={16} /> Descarcă
+          </button>
+          <button onClick={() => setSplitOpen(true)} className="btn-soft text-sm">
+            <Users size={16} /> Împarte
           </button>
         </div>
-        <div className="mt-4">
-          <PaymentStatusTag status={record.status} />
-        </div>
-        <p className="mt-4 text-3xl font-extrabold tracking-tight text-ink">{fmtRon(record.amount)}</p>
-        <dl className="mt-4 flex flex-col gap-3 text-sm">
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Furnizor</dt>
-            <dd className="text-right font-semibold text-ink">{record.supplier}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Data</dt>
-            <dd className="text-right font-semibold text-ink">{when}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">Referință</dt>
-            <dd className="font-mono font-semibold text-ink">{record.reference}</dd>
-          </div>
-        </dl>
-        <p className="mt-5 text-xs text-muted">Chitanță demonstrativă. Plata nu este procesată real în acest prototip.</p>
-      </div>
-    </div>,
-    document.body,
+        <Link href="/ajutor" onClick={onClose} className="mt-3 flex min-h-11 items-center justify-center gap-2 text-sm font-semibold text-pago-blue">
+          <LifeBuoy size={16} /> Am o problemă cu această plată
+        </Link>
+        <p className="mt-2 text-center text-xs text-muted">Chitanță demonstrativă. Plata nu este procesată real în acest prototip.</p>
+      </Sheet>
+      <SplitSheet open={splitOpen} onClose={() => setSplitOpen(false)} defaultTitle={record.title} defaultTotal={record.amount} />
+    </>
   );
 }

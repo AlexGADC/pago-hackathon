@@ -4,27 +4,29 @@ import { useState } from "react";
 import { CheckCircle2, Snowflake } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";
-import { POINTS } from "@/data/mockFamilyData";
 import { fmtNum, fmtRon, legalDeadlineDays, validateIndex } from "@/lib/disputes";
+import { demoNow, uniqueId } from "@/lib/format";
 import type { Bill, DisputeTicket } from "@/types/pago";
 
 const CONFIDENCE = "Declarat manual de client (supus regularizării)" as const;
 
 export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: DisputeTicket) => void }) {
-  const { submitDispute, addPoints } = useFamily();
-  const meter = bill.meter!;
+  const { submitDispute } = useFamily();
   const [indexText, setIndexText] = useState("");
 
+  if (!bill.meter) return null;
+
+  const meter = bill.meter;
   const realIndex = Number(indexText.replace(",", "."));
   const validation = indexText.trim() === "" ? null : validateIndex(bill, realIndex);
 
   function confirm() {
     if (!validation?.ok) return;
     const ticket: DisputeTicket = {
-      id: `tkt-${bill.id}-${Date.now()}`,
+      id: uniqueId(`tkt-${bill.id}`),
       billId: bill.id,
       houseId: bill.houseId,
-      createdAt: new Date().toISOString(),
+      createdAt: demoNow(),
       stage: "trimisa",
       legalDeadlineDays: legalDeadlineDays(bill),
       confidence: CONFIDENCE,
@@ -33,12 +35,11 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       paidAmount: validation.correctAmount,
       message:
         `Către ${bill.provider}: contest factura ${bill.invoiceNumber} (cod client ${bill.clientCode}). ` +
-        `Indexul facturat ${fmtNum(meter.billedIndex)} ${meter.unit} este estimat greșit; indexul real este ${realIndex} ${meter.unit} ` +
-        `(${CONFIDENCE}). Am achitat suma necontestată de ${fmtRon(validation.correctAmount)} și solicit emiterea facturii storno ` +
+        `Indexul facturat ${fmtNum(meter.billedIndex)} ${meter.unit} este estimat greșit; indexul real este ${fmtNum(realIndex)} ${meter.unit} ` +
+        `(${CONFIDENCE}). Achit suma necontestată de ${fmtRon(validation.correctAmount)} și solicit emiterea facturii storno ` +
         `pentru diferența de ${fmtRon(validation.disputedAmount)}.`,
     };
     submitDispute(ticket);
-    addPoints(POINTS.bounty);
     onSent(ticket);
   }
 
@@ -46,8 +47,14 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
     <Card>
       <h2 className="text-lg font-bold text-ink">Care e indexul real?</h2>
       <p className="mt-1 text-sm text-muted">
-        Ultimul index confirmat: <b className="text-ink">{fmtNum(meter.lastConfirmedIndex)} {meter.unit}</b> · Facturat:{" "}
-        <b className="text-alert">{fmtNum(meter.billedIndex)} {meter.unit}</b>
+        Ultimul index confirmat:{" "}
+        <b className="text-ink">
+          {fmtNum(meter.lastConfirmedIndex)} {meter.unit}
+        </b>{" "}
+        · Facturat:{" "}
+        <b className="text-alert">
+          {fmtNum(meter.billedIndex)} {meter.unit}
+        </b>
       </p>
 
       <label className="mt-5 block">
@@ -57,7 +64,7 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
             inputMode="decimal"
             value={indexText}
             onChange={(e) => setIndexText(e.target.value.replace(/[^\d.,]/g, ""))}
-            placeholder={`ex: ${fmtNum(meter.lastConfirmedIndex + 260)}`}
+            placeholder={`ex: ${fmtNum(meter.lastConfirmedIndex + 10)}`}
             className="h-14 min-w-0 flex-1 bg-transparent text-2xl font-bold text-ink outline-none"
           />
           <span className="font-semibold text-muted">{meter.unit}</span>
@@ -70,7 +77,10 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
         <div className="mt-5 rounded-2xl bg-surface-2 p-4">
           <Tag tone="orange">{CONFIDENCE}</Tag>
           <p className="mt-3 text-sm text-muted">
-            Consum real: <b className="text-ink">{fmtNum(validation.consumption)} {meter.unit}</b>
+            Consum real:{" "}
+            <b className="text-ink">
+              {fmtNum(validation.consumption)} {meter.unit}
+            </b>
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-surface p-3 shadow-card">
