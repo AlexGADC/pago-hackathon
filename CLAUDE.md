@@ -92,8 +92,19 @@ public/samples/contor-exemplu.jpg   ← poza demo (index vizibil 12410)
 
 ## 5. Reguli de Design
 
+**Direcția vizuală:** „soft premium” cu **gradient albastru Pago** — fundal neutru gri-deschis, carduri albe foarte rotunjite cu umbre fine, un singur accent de culoare (albastrul), butoane principale închise (grafit) în formă de pastilă. Inspirație de stil (layout, colțuri, gradient, pastile), NU copiem imagini sau conținut din referințe. Toate valorile sunt tokens în `src/app/globals.css` — nu scrieți culori hex direct în componente.
+
 - **Mobile-First Frame:** pe desktop, container centrat `max-w-[430px]`, `rounded-[32px]`, status bar simulat, bottom nav cu 4 tab-uri, umbră fină.
-- **Culori (definite ca tokens Tailwind în `globals.css`):** `pago-blue #0066FF`, `family-indigo #6366F1`, `family-coral #F97316`, `app #F6F8FC`, carduri albe `rounded-2xl` cu `card-border #E2E8F0`, `alert #EF4444` pe `alert-bg #FEF2F2`, `success #10B981` pe `success-bg #ECFDF5`.
+- **Hero (Acasă):** bloc mare cu `bg-hero` (gradient albastru difuz, saturat sus, care se stinge spre gri-albăstrui jos), `rounded-hero`, text alb: salut mic („Bună,”) + titlu mare („Familia Popescu”). Switcher-ul de locuințe stă în hero, ca pastilă `glass`.
+- **Carduri stivuite peste hero:** întâi o bandă `glass` (ex: „🚨 Ai 1 factură suspectă →”), apoi un card alb `rounded-card shadow-card` cu suma lunii și CTA închis.
+- **Carduri:** `bg-white rounded-card shadow-card` (fără border vizibil sau cu `border-line`). Spațiere generoasă (`p-5`, `gap-3`).
+- **Butoane:** principal = `btn-dark` (pastilă grafit cu gradient subtil, text alb); secundar = `btn-blue`; terțiar = pastilă albă cu `shadow-card`. Butoane-iconiță rotunde (44px) pentru înapoi / apel / „…”.
+- **Etichete (pastile mici pastel)** deasupra titlurilor, `rounded-full text-[11px] font-semibold`: `tag-blue` (Normală / info), `tag-red` (Red Flag), `tag-green` (Plătită / validat), `tag-orange` (puncte / misiuni), `tag-indigo` (contestată / în analiză).
+- **Servicii / acțiuni rapide:** rânduri de pastile albe cu iconiță Lucide + text scurt, derulabile orizontal.
+- **Carusele orizontale** (`snap-x`) pentru carduri mari: Family Pool / membrii (cu `bg-card-gradient`, ca un card bancar), expirări și abonamente pe Radar.
+- **Header de ecran (în afară de Acasă):** buton rotund „înapoi” + titlu + (opțional) comutator de vedere în dreapta.
+- **Bottom nav:** fundal alb, iconițe `text-muted`, tab-ul activ `text-ink` cu iconiță plină/îngroșată.
+- **Culori (tokens):** `pago-blue #0066FF`, `pago-blue-dark #0047CC`, `pago-sky #6FB6FF`, `ink #0F172A`, `muted #64748B`, `app #F2F5FA`, `line #E6EBF2`, `alert #EF4444` / `alert-bg #FEF2F2`, `success #10B981` / `success-bg #ECFDF5`, `family-indigo #6366F1`, `family-coral #F97316` (doar pentru puncte/misiuni). `card-border` rămâne alias pentru `line`.
 - **Limba:** 100% română, ton cald, fără jargon bancar sau birocratic.
 
 ---

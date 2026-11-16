@@ -1,20 +1,119 @@
 @import "tailwindcss";
 
-/* Paleta Pago Home & Family (vezi CLAUDE.md §4). Folosiți ca: bg-pago-blue, text-alert, bg-app etc. */
+/* Design system Pago Home & Family — „soft premium” cu gradient albastru (vezi CLAUDE.md §5).
+   Folosiți tokens: bg-pago-blue, text-ink, text-muted, bg-app, rounded-card, shadow-card,
+   plus utilitarele de mai jos: bg-hero, bg-card-gradient, glass, btn-dark, btn-blue, tag-*. */
 @theme {
+  /* Culori de brand */
   --color-pago-blue: #0066ff;
-  --color-family-indigo: #6366f1;
-  --color-family-coral: #f97316;
-  --color-app: #f6f8fc;
-  --color-card-border: #e2e8f0;
+  --color-pago-blue-dark: #0047cc;
+  --color-pago-sky: #6fb6ff;
+
+  /* Neutre */
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-app: #f2f5fa;
+  --color-line: #e6ebf2;
+  --color-card-border: #e6ebf2; /* alias păstrat pentru componentele existente */
+
+  /* Stări */
   --color-alert: #ef4444;
   --color-alert-bg: #fef2f2;
   --color-success: #10b981;
   --color-success-bg: #ecfdf5;
+
+  /* Accente familie (doar puncte / misiuni) */
+  --color-family-indigo: #6366f1;
+  --color-family-coral: #f97316;
+
+  /* Forme */
+  --radius-card: 24px;
+  --radius-hero: 32px;
+
+  /* Umbre fine */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+  --shadow-float: 0 12px 32px rgb(0 71 204 / 0.18);
+
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Hero-ul de pe Acasă: albastru difuz, saturat sus, care se stinge spre gri-albăstrui jos. */
+@utility bg-hero {
+  background:
+    radial-gradient(90% 70% at 15% 0%, #3d8bff 0%, transparent 60%),
+    radial-gradient(70% 60% at 100% 15%, var(--color-pago-sky) 0%, transparent 60%),
+    radial-gradient(120% 80% at 50% 110%, #dfe7f5 0%, transparent 65%),
+    linear-gradient(170deg, var(--color-pago-blue) 0%, #2f5fe0 40%, #9db7ea 75%, #e4eaf5 100%);
+}
+
+/* Card mare cu gradient (Family Pool, „card bancar”). */
+@utility bg-card-gradient {
+  background:
+    radial-gradient(80% 90% at 0% 0%, var(--color-pago-sky) 0%, transparent 60%),
+    linear-gradient(135deg, var(--color-pago-blue) 0%, var(--color-pago-blue-dark) 60%, #1e2a78 100%);
+  color: #fff;
+}
+
+/* Bandă translucidă peste hero (alertă, switcher). */
+@utility glass {
+  background: rgb(255 255 255 / 0.18);
+  border: 1px solid rgb(255 255 255 / 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #fff;
+}
+
+/* Buton principal: pastilă grafit. */
+@utility btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, #3a3f4b 0%, #16181d 100%);
+  box-shadow: 0 6px 16px rgb(15 23 42 / 0.25);
+}
+
+/* Buton secundar: pastilă albastră. */
+@utility btn-blue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, #2b7fff 0%, var(--color-pago-blue-dark) 100%);
+  box-shadow: var(--shadow-float);
+}
+
+/* Etichete pastel deasupra titlurilor. */
+@utility tag-blue {
+  background: #e3eeff;
+  color: #1d4ed8;
+}
+@utility tag-red {
+  background: #fde4e4;
+  color: #b91c1c;
+}
+@utility tag-green {
+  background: #dcf7ea;
+  color: #047857;
+}
+@utility tag-orange {
+  background: #ffead6;
+  color: #c2410c;
+}
+@utility tag-indigo {
+  background: #e8e9ff;
+  color: #4338ca;
+}
+
 body {
-  background: #e9edf5;
-  color: #0f172a;
+  background: #e7ecf4;
+  color: var(--color-ink);
 }
