@@ -10,7 +10,9 @@ import { useFamily } from "@/context/FamilyContext";
 import { fmtRon, percentOverAverage } from "@/lib/disputes";
 import type { Bill, DisputeTicket } from "@/types/pago";
 import { BILL_STATUS } from "./billStatus";
-import { DisputeFlowA, SentCard } from "./DisputeFlowA";
+import { DisputeFlowA } from "./DisputeFlowA";
+import { DisputeFlowB } from "./DisputeFlowB";
+import { DisputeSentCard } from "./DisputeSentCard";
 
 export function BillDetail({ billId }: { billId: string }) {
   const { bills, tickets } = useFamily();
@@ -66,11 +68,9 @@ export function BillDetail({ billId }: { billId: string }) {
 
       {/* Fluxul de contestare */}
       {bill.status === "red_flag" && bill.flow === "A" && <DisputeFlowA bill={bill} onSent={setJustSent} />}
-      {bill.status === "red_flag" && bill.flow === "B" && (
-        <Card className="text-sm text-muted">Flux B (confirmare dintr-un tap) — în lucru.</Card>
-      )}
+      {bill.status === "red_flag" && bill.flow === "B" && <DisputeFlowB bill={bill} onSent={setJustSent} />}
 
-      {justSent && <SentCard ticket={justSent} provider={bill.provider} />}
+      {justSent && <DisputeSentCard ticket={justSent} provider={bill.provider} />}
 
       {/* Contestație deja trimisă */}
       {ticket && !justSent && bill.status !== "red_flag" && (
