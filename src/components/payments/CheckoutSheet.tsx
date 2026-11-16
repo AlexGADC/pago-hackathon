@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, CreditCard, Fingerprint, Gift, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, CopyCheck, CreditCard, Fingerprint, Gift, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { CategoryBadge } from "@/components/shared/Badges";
 import { Tag } from "@/components/shared/Card";
 import { InfoNote, Toggle } from "@/components/shared/Controls";
 import { Sheet } from "@/components/shared/Sheet";
 import { useFamily, type CheckoutRequest } from "@/context/FamilyContext";
-import { cardExpiryLabel, cardLabel, checkoutTotals, isCardExpired, maxDiscount, payeeLabel } from "@/lib/checkout";
+import { cardExpiryLabel, cardLabel, checkoutTotals, duplicateMessage, findDuplicates, isCardExpired, maxDiscount, payeeLabel } from "@/lib/checkout";
 import { fmtNum, fmtRon } from "@/lib/disputes";
 import { plural } from "@/lib/format";
 import { ConnectionBadge, PaymentStatusTag, PaymentTimeline } from "./PaymentStatus";
@@ -30,7 +30,7 @@ function CheckoutFlow({ request, onClose }: { request: CheckoutRequest; onClose:
   const [selected, setSelected] = useState<string[]>(request.items.map((i) => i.eventId));
   const [methodId, setMethodId] = useState<string>(preferred?.id ?? "");
   const [usePoints, setUsePoints] = useState(false);
-  const [phase, setPhase] = useState<"review" | "verify" | "result">("review");
+  const [phase, setPhase] = useState<"review" | "duplicate" | "verify" | "result">("review");
   const [paidIds, setPaidIds] = useState<string[]>([]);
   const [receiptId, setReceiptId] = useState<string | null>(null);
 
@@ -40,6 +40,7 @@ function CheckoutFlow({ request, onClose }: { request: CheckoutRequest; onClose:
   const totals = checkoutTotals(items, points, usePoints && possible > 0);
   const method = usable.find((m) => m.id === methodId);
   const canPay = items.length > 0 && Boolean(method);
+  const duplicates = findDuplicates(items, payments, today);
 
   const records = payments.filter((p) => paidIds.includes(p.id));
   const inFlight = records.some((p) => p.status === "procesare" || p.status === "trimisa");
@@ -58,8 +59,7 @@ function CheckoutFlow({ request, onClose }: { request: CheckoutRequest; onClose:
     setPhase("result");
   }
 
-  function confirm() {
-    if (!canPay) return;
+  function authorize() {
     if (settings.appLock) {
       setPhase("verify");
       setTimeout(run, VERIFY_MS);
@@ -68,10 +68,74 @@ function CheckoutFlow({ request, onClose }: { request: CheckoutRequest; onClose:
     run();
   }
 
+  function confirm() {
+    if (!canPay) return;
+    if (duplicates.length > 0) {
+      setPhase("duplicate");
+      return;
+    }
+    authorize();
+  }
+
+  function skipDuplicates() {
+    const repeated = duplicates.map((d) => d.item.eventId);
+    const rest = selected.filter((id) => !repeated.includes(id));
+    if (rest.length === 0) {
+      onClose();
+      return;
+    }
+    setSelected(rest);
+    setPhase("review");
+  }
+
   function retry() {
     setSelected(failed.map((p) => p.eventId));
     setPaidIds([]);
     setPhase("review");
+  }
+
+  if (phase === "duplicate") {
+    return (
+      <Sheet
+        open
+        onClose={onClose}
+        title="Plată repetată"
+        footer={
+          <div className="flex gap-2">
+            <button onClick={skipDuplicates} className="btn-soft flex-1">
+              Anulează
+            </button>
+            <button onClick={authorize} className="btn-dark flex-1">
+              Plătește oricum
+            </button>
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center py-6 text-center">
+          <span className="grid size-16 place-items-center rounded-full bg-warning-bg text-warning">
+            <CopyCheck size={32} />
+          </span>
+          <ul className="mt-4 flex flex-col gap-3">
+            {duplicates.map((d) => (
+              <li key={d.item.eventId}>
+                <p className="text-lg font-bold text-ink">{duplicateMessage(d)}</p>
+                <p className="mt-1 text-xs text-muted">
+                  Plata anterioară: {fmtRon(d.record.amount)} · referință {d.record.reference}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm font-semibold text-ink">Sigur plătești din nou?</p>
+          <p className="mt-1 text-sm text-muted">
+            {items.length > duplicates.length
+              ? duplicates.length > 1
+                ? "Dacă anulezi, plățile repetate ies din listă și poți plăti restul."
+                : "Dacă anulezi, plata repetată iese din listă și poți plăti restul."
+              : "Dacă anulezi, nu pleacă niciun ban din cont."}
+          </p>
+        </div>
+      </Sheet>
+    );
   }
 
   if (phase === "verify") {
