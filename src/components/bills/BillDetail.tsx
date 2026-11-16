@@ -1,10 +1,10 @@
 "use client";
 
-// Ecranul de detaliu al facturii + „Pago AI Bodyguard”. Alege fluxul de contestare după tipul facturii.
+// Ecranul de detaliu al facturii + „Alege fluxul de contestare după tipul facturii.
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileText, Snowflake, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, Snowflake } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";
 import { fmtRon, percentOverAverage } from "@/lib/disputes";
@@ -15,10 +15,9 @@ import { DisputeFlowB } from "./DisputeFlowB";
 import { DisputeSentCard } from "./DisputeSentCard";
 
 export function BillDetail({ billId }: { billId: string }) {
-  const { bills, tickets } = useFamily();
+  const { bills, tickets, payBill } = useFamily();
   const bill = bills.find((b) => b.id === billId);
   const ticket = tickets.find((t) => t.billId === billId);
-  // Confirmarea „+500 puncte” apare doar imediat după trimitere; la revenire se vede cardul de status.
   const [justSent, setJustSent] = useState<DisputeTicket | null>(null);
 
   if (!bill) {
@@ -56,13 +55,21 @@ export function BillDetail({ billId }: { billId: string }) {
         </p>
       </Card>
 
-      {/* Explicația AI */}
       {bill.anomaly && (
         <Card>
           <p className="mb-2 flex items-center gap-2 text-sm font-bold text-pago-blue">
-            <Sparkles size={16} /> Pago AI a analizat PDF-ul facturii
+            <AlertTriangle size={16} /> Ce am găsit în factură
           </p>
           <p className="text-[15px] leading-relaxed text-ink">{bill.anomaly.reason}</p>
+        </Card>
+      )}
+
+      {bill.status === "normala" && (
+        <Card>
+          <p className="text-sm text-muted">Factura e în regulă. Poți plăti direct din aplicație.</p>
+          <button onClick={() => payBill(bill.id)} className="btn-dark mt-4 w-full">
+            Plătește {fmtRon(bill.amount)}
+          </button>
         </Card>
       )}
 

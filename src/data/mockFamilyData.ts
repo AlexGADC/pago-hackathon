@@ -132,7 +132,7 @@ export const missions: Mission[] = [
     id: "mis-autocitire",
     kind: "autocitire",
     title: "📸 Misiunea Autocitire",
-    description: "Fă o poză clară la contorul de curent în fereastra de autocitire (1–5 ale lunii).",
+    description: "Introdu indexul contorului de curent în fereastra de autocitire (1–5 ale lunii).",
     points: POINTS.autocitire,
     forRole: "junior",
     completed: false,
@@ -172,8 +172,3 @@ export const expiries: ExpiryItem[] = [
   { id: "exp-itp-logan", houseId: "acasa", kind: "ITP", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-04-02" },
   { id: "exp-rca-bunici", houseId: "bunici", kind: "RCA", vehicle: "Renault Clio · CJ-55-MRA", expiresOn: "2026-11-24" },
 ];
-
-/** Răspuns realist folosit când cheia API lipsește sau Claude depășește 5 secunde. */
-export const FALLBACK_METER_INDEX: Record<string, number> = {
-  "bill-electrica": 15.79,
-};

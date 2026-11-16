@@ -1,7 +1,7 @@
 "use client";
 
 // TAB 3 — Familie & Misiuni. Schelet legat la context.
-// TODO (frontend): MissionAutocitire cu poză + SplitModal (shared) cu link copiabil.
+// TODO (frontend): MissionAutocitire cu index manual + SplitModal (shared) cu link copiabil.
 
 import { Card, SectionTitle } from "@/components/shared/Card";
 import { useFamily } from "@/context/FamilyContext";

@@ -1,7 +1,5 @@
 "use client";
 
-// TAB 2 — Facturi & Pago AI Bodyguard. Fiecare card duce la detaliu (/facturi/[id]).
-// TODO (frontend): DisputeFlowB (1 tap) + TicketTracker.
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";

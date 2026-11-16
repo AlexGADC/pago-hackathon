@@ -11,12 +11,12 @@ export interface House {
 
 export type UtilityKind = "curent" | "gaz" | "apa" | "salubritate" | "telecom" | "intretinere";
 
-/** Flux A = utilitate cu contor (poză / index manual). Flux B = fără contor (confirmare 1 tap). */
+/** Flux A = utilitate cu contor (index introdus manual). Flux B = fără contor (confirmare 1 tap). */
 export type DisputeFlow = "A" | "B";
 
 export type BillStatus =
   | "normala" // ✅ în media ultimelor 12 luni
-  | "red_flag" // 🚨 anomalie detectată de AI
+  | "red_flag" // 🚨 anomalie detectată
   | "contestata" // sesizare trimisă, diferență înghețată
   | "platita_partial" // s-a plătit suma necontestată
   | "platita";
@@ -61,7 +61,7 @@ export interface Bill {
 
 export type TicketStage = "trimisa" | "in_analiza" | "stornata";
 
-export type ConfidenceLabel = "Verificat AI + Poză" | "Declarat manual de client (supus regularizării)" | "Confirmat de client (fără contor)";
+export type ConfidenceLabel = "Declarat manual de client (supus regularizării)" | "Confirmat de client (fără contor)";
 
 export interface DisputeTicket {
   id: string;
@@ -122,35 +122,6 @@ export interface ExpiryItem {
   kind: ExpiryKind;
   vehicle: string; // "Dacia Logan B-123-POP"
   expiresOn: string; // ISO
-}
-
-// ---------- API: POST /api/analyze-meter ----------
-
-export interface AnalyzeMeterRequest {
-  billId: string;
-  /** Poză base64 (fără prefixul data:). Lipsește dacă se folosește poza exemplu. */
-  imageBase64?: string;
-  mediaType?: "image/jpeg" | "image/png" | "image/webp";
-  useSample?: boolean;
-}
-
-export interface AnalyzeMeterResponse {
-  index: number | null; // indexul citit din poză
-  confidence: number; // 0..1
-  source: "claude" | "fallback";
-  note?: string; // motivul fallback-ului, pentru debug
-}
-
-// ---------- API: POST /api/dispute-chat ----------
-
-export interface DisputeChatRequest {
-  billId: string;
-  question?: string;
-}
-
-export interface DisputeChatResponse {
-  answer: string;
-  source: "claude" | "fallback";
 }
 
 // ---------- Validare index (Flux A) ----------

@@ -1,7 +1,5 @@
 "use client";
 
-// Flux B — servicii fără contor (salubritate, telecom). Zero poze, zero tastat:
-// AI-ul arată linia greșită din PDF, utilizatorul confirmă cu un tap → plată parțială + sesizare.
 
 import { CheckCircle2, FileText, Snowflake } from "lucide-react";
 import { Card, Tag } from "@/components/shared/Card";
@@ -20,7 +18,7 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
   const disputedAmount = bill.amount - correctAmount;
   const suspicious = anomaly.suspiciousLines ?? [];
 
-  // Liniile „din PDF”: cele suspecte (marcate de AI) între câteva linii obișnuite ale facturii.
+  // Liniile „din PDF”: cele suspecte (marcate) între câteva linii obișnuite ale facturii.
   const pdfLines: { text: string; flagged: boolean }[] = [
     { text: `Factura ${bill.invoiceNumber} · Cod client ${bill.clientCode}`, flagged: false },
     { text: `Emisă la ${new Date(bill.issueDate).toLocaleDateString("ro-RO")}`, flagged: false },
@@ -52,9 +50,9 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
   return (
     <Card>
       <h2 className="text-lg font-bold text-ink">Am găsit greșeala în factură</h2>
-      <p className="mt-1 text-sm text-muted">Nu ai nevoie de poză sau contor. Uită-te doar la linia marcată.</p>
+      <p className="mt-1 text-sm text-muted">Uită-te doar la linia marcată.</p>
 
-      {/* Fragment din PDF cu linia greșită evidențiată */}
+      
       <div className="mt-4 rounded-2xl border border-line bg-app p-4">
         <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted">
           <FileText size={14} /> Din PDF-ul facturii {bill.provider}
@@ -74,7 +72,7 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
 
       {/* Rezumat: cât plătești acum și cât se îngheață */}
       <div className="mt-4 rounded-2xl bg-app p-4">
-        <Tag tone="blue">✨ Detectat de Pago AI în PDF</Tag>
+        <Tag tone="blue">✨ Linie suspectă detectată</Tag>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-white p-3 shadow-card">
             <p className="text-xs text-muted">Plătești acum</p>
