@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { BarChart3, Car, ChevronLeft, ChevronRight, Receipt, Repeat, X } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { FAMILY_NAME } from "@/data/mockFamilyData";
@@ -207,7 +208,7 @@ export function HomeScreen() {
         )}
       </section>
 
-      {openDate && (
+      {openDate && createPortal(
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-6" onClick={() => setOpenDate(null)}>
           <div className="w-full max-w-[360px] rounded-card bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
@@ -248,7 +249,7 @@ export function HomeScreen() {
             </button>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
