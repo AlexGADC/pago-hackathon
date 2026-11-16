@@ -23,12 +23,12 @@ Aplicația are o bară de navigare inferioară cu **4 tab-uri principale**: **Ac
   - ✅ **Verificată (Normală):** în media ultimelor 12 luni — plată instant.
   - 🚨 **Red Flag:** _Electrica Furnizare — 1.480 RON (+469% față de media de 260 RON)_ sau la _Casa Bunicilor_: _Retim Salubritate — 110 RON (5 persoane facturate în loc de 2)_.
 - **„Întreabă Pago AI”** — se deschide doar la cerere sau pe facturile cu _Red Flag_ (event-driven, cost zero pe facturile normale).
-  - **Explicație pe înțelesul tuturor** (_„Ți-au estimat un index de 14.850 kWh în loc de ~12.410 kWh”_).
+  - **Explicație pe înțelesul tuturor** (_„Ți-au estimat un index de 1.485 kWh în loc de ~15,79 kWh”_).
   - **Flux A (cu contor — Curent / Gaz / Apă):**
     1. Poză la contor (sau butonul **„Folosește poză contor exemplu”**) SAU tab-ul **„Introdu indexul manual”**.
-    2. **Claude Vision** citește indexul (`12.410 kWh`) într-un **câmp editabil** pentru confirmare.
-    3. **Validare:** indexul trebuie să fie ≥ ultimul index confirmat (`12.150 kWh`) și ≤ indexul facturat (`14.850 kWh`). Etichetă de încredere: _„Verificat AI + Poză”_ sau _„Declarat manual de client (supus regularizării)”_.
-    4. **Rezoluție:** sesizare structurată către furnizor, diferența (`1.220 RON`) înghețată, plată pe loc doar a **sumei corecte (`260 RON`)**, **+500 Puncte Bounty** în _Family Pool_.
+    2. **Claude Vision** citește indexul (`15,79 kWh`) într-un **câmp editabil** pentru confirmare.
+    3. **Validare:** indexul trebuie să fie ≥ ultimul index confirmat (`5 kWh`) și ≤ indexul facturat (`1.485 kWh`). Etichetă de încredere: _„Verificat AI + Poză”_ sau _„Declarat manual de client (supus regularizării)”_.
+    4. **Rezoluție:** sesizare structurată către furnizor, diferența (`1.469 RON`) înghețată, plată pe loc doar a **sumei corecte (`11 RON`)**, **+500 Puncte Bounty** în _Family Pool_.
   - **Flux B (fără contor — Salubritate / Telecom):** AI-ul identifică linia greșită din PDF (_nr. persoane_ / _extraopțiune_), utilizatorul confirmă cu 1 tap, se plătește doar suma corectă (`45 RON`).
 - **Status Tracker Contestații:** pe factura contestată (_Trimisă → În analiză → Factură stornată_), cu termenul legal (15/30 zile).
 
@@ -77,7 +77,7 @@ src/
     ├── bills/    BillsScreen (+ BillDetail, DisputeFlowA, DisputeFlowB, TicketTracker)
     ├── family/   FamilyScreen (+ MissionAutocitire)
     └── radar/    RadarScreen
-public/samples/contor-exemplu.jpg   ← poza demo (index vizibil 12410)
+public/samples/contor-exemplu.jpg   ← poza demo (index vizibil 15,79 kWh)
 ```
 
 **Reguli de lucru în echipă (Frontend + Backend pe branch-uri):**

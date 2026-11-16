@@ -4,16 +4,15 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { CLAUDE_MODEL, getClient, hasApiKey } from "@/lib/anthropic";
+import { generate, hasGeminiKey } from "@/lib/gemini";
 import { bills, FALLBACK_METER_INDEX } from "@/data/mockFamilyData";
 import type { AnalyzeMeterRequest, AnalyzeMeterResponse } from "@/types/pago";
 
 const SAMPLE_PHOTO = path.join(process.cwd(), "public", "samples", "contor-exemplu.jpg");
 
 const MeterSchema = z.object({
-  index: z.number().int().nullable().describe("Indexul afișat pe contor, fără zecimale; null dacă nu se poate citi"),
-  confidence: z.number().describe("Cât de sigur ești, între 0 și 1"),
+  index: z.number().nullable(),
+  confidence: z.number().min(0).max(1),
 });
 
 function fallback(billId: string, note: string): Response {
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
   const bill = bills.find((b) => b.id === req.billId);
   if (!bill?.meter) return Response.json({ error: "Factură necunoscută sau fără contor." }, { status: 400 });
 
-  if (!hasApiKey()) return fallback(bill.id, "ANTHROPIC_API_KEY lipsește");
+  if (!hasGeminiKey()) return fallback(bill.id, "GEMINI_API_KEY lipsește");
 
   let data = req.imageBase64;
   let mediaType = req.mediaType ?? "image/jpeg";
@@ -41,29 +40,20 @@ export async function POST(request: Request) {
   if (!data) return fallback(bill.id, "nicio poză trimisă");
 
   try {
-    const response = await getClient().beta.messages.parse({
-      model: CLAUDE_MODEL,
-      max_tokens: 1024,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low", format: zodOutputFormat(MeterSchema) },
-      messages: [
+    const text = await generate(
+      [
+        { inline_data: { mime_type: mediaType, data } },
         {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data } },
-            {
-              type: "text",
-              text: `Aceasta este o poză cu un contor de ${bill.kind} (unitate: ${bill.meter.unit}). Citește indexul afișat pe cadran, doar partea întreagă.`,
-            },
-          ],
+          text: `Aceasta este o poză cu un contor de ${bill.kind} (unitate: ${bill.meter.unit}). Citește indexul afișat pe cadran, cu zecimalele dacă există (de exemplu 15.79). Răspunde doar cu JSON de forma {"index": număr sau null dacă nu se poate citi, "confidence": număr între 0 și 1}.`,
         },
       ],
-    });
+      { json: true, maxOutputTokens: 1024 },
+    );
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) return fallback(bill.id, `fără rezultat (${response.stop_reason})`);
+    const parsed = MeterSchema.safeParse(JSON.parse(text));
+    if (!parsed.success) return fallback(bill.id, "răspuns invalid de la model");
 
-    const body: AnalyzeMeterResponse = { ...response.parsed_output, source: "claude" };
+    const body: AnalyzeMeterResponse = { ...parsed.data, source: "claude" };
     return Response.json(body);
   } catch (err) {
     // Timeout (5 s), rețea, rate limit — demo-ul merge mai departe pe fallback.

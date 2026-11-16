@@ -31,10 +31,10 @@ export const bills: Bill[] = [
     averageAmount: 260,
     history: history(260, [30, 45, 40, 20, -10, -25, -30, -20, -15, -5, 5, 15]),
     status: "red_flag",
-    meter: { unit: "kWh", billedIndex: 14850, lastConfirmedIndex: 12150, pricePerUnit: 1 },
+    meter: { unit: "kWh", billedIndex: 1485, lastConfirmedIndex: 5, pricePerUnit: 1 },
     anomaly: {
-      reason: "Ți-au estimat un index de 14.850 kWh, deși ultimul index real confirmat a fost 12.150 kWh. Asta înseamnă 2.700 kWh într-o lună, de 10 ori mai mult decât consumi de obicei.",
-      expectedAmount: 260,
+      reason: "Ți-au facturat 1.480 kWh într-o lună: indexul estimat este 1.485 kWh, deși ultimul index real confirmat a fost 5 kWh. Contorul arată de fapt 15,79 kWh.",
+      expectedAmount: 11,
     },
   },
   {
@@ -175,5 +175,5 @@ export const expiries: ExpiryItem[] = [
 
 /** Răspuns realist folosit când cheia API lipsește sau Claude depășește 5 secunde. */
 export const FALLBACK_METER_INDEX: Record<string, number> = {
-  "bill-electrica": 12410,
+  "bill-electrica": 15.79,
 };
