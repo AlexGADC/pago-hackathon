@@ -72,6 +72,7 @@ export interface DisputeTicket {
   disputedAmount: number;
   paidAmount: number;
   message: string;
+  resolvedAt?: string;
 }
 
 export type MemberRole = "admin" | "junior" | "protejat";

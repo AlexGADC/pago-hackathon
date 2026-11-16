@@ -194,6 +194,26 @@ export function advanceTickets(state: AppState): AppState {
   return { ...state, tickets: state.tickets.map((t) => (t.stage === "trimisa" ? { ...t, stage: "in_analiza" as const } : t)) };
 }
 
+export function resolveTickets(state: AppState, now: string): AppState {
+  const closing = state.tickets.filter((t) => t.stage === "in_analiza");
+  if (closing.length === 0) return state;
+  return {
+    ...state,
+    tickets: state.tickets.map((t) => (t.stage === "in_analiza" ? { ...t, stage: "stornata" as const, resolvedAt: now } : t)),
+    bills: state.bills.map((b) => {
+      const ticket = closing.find((t) => t.billId === b.id);
+      if (!ticket) return b;
+      const settled = b.status === "platita_partial" || b.status === "platita";
+      return {
+        ...b,
+        amount: ticket.paidAmount,
+        status: settled ? ("platita" as const) : ("normala" as const),
+        meter: b.meter && ticket.realIndex !== undefined ? { ...b.meter, billedIndex: ticket.realIndex } : b.meter,
+      };
+    }),
+  };
+}
+
 export function reconnect(state: AppState, provider: string, houseId: HouseId): AppState {
   return {
     ...state,

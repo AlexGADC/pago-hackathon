@@ -1,4 +1,4 @@
-import { Snowflake } from "lucide-react";
+import { CheckCircle2, Snowflake } from "lucide-react";
 import { Step } from "@/components/payments/PaymentStatus";
 import { Card, Tag } from "@/components/shared/Card";
 import { fmtRon } from "@/lib/disputes";
@@ -14,9 +14,15 @@ export function TicketTracker({ ticket, provider }: { ticket: DisputeTicket; pro
     <Card>
       <div className="flex items-center justify-between gap-3">
         <p className="font-bold text-ink">Starea contestației</p>
-        <Tag tone="indigo">
-          <Snowflake size={11} /> {fmtRon(ticket.disputedAmount)} înghețați
-        </Tag>
+        {closed ? (
+          <Tag tone="green">
+            <CheckCircle2 size={11} /> {fmtRon(ticket.disputedAmount)} economisiți
+          </Tag>
+        ) : (
+          <Tag tone="indigo">
+            <Snowflake size={11} /> {fmtRon(ticket.disputedAmount)} înghețați
+          </Tag>
+        )}
       </div>
       <ol className="mt-4">
         <Step state="done" title="Sesizare trimisă" detail={`${fmtDateTime(ticket.createdAt)} · ${ticket.confidence}`} />
@@ -28,7 +34,13 @@ export function TicketTracker({ ticket, provider }: { ticket: DisputeTicket; pro
         <Step
           state={closed ? "done" : analysing ? "active" : "todo"}
           title="Factură stornată"
-          detail={closed ? "Diferența a fost anulată." : analysing ? "Te anunțăm imediat ce furnizorul emite factura storno." : undefined}
+          detail={
+            closed
+              ? `${provider} a emis factura storno${ticket.resolvedAt ? ` pe ${fmtDateTime(ticket.resolvedAt)}` : ""}. Diferența de ${fmtRon(ticket.disputedAmount)} a fost anulată.`
+              : analysing
+                ? "Te anunțăm imediat ce furnizorul emite factura storno."
+                : undefined
+          }
           last
         />
       </ol>

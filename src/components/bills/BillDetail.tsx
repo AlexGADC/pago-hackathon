@@ -45,6 +45,7 @@ export function BillDetail({ billId }: { billId: string }) {
   const late = event ? isOverdue(event, today) : false;
   const record = event?.record;
   const monthLabel = MONTHS[Number(bill.dueDate.slice(5, 7)) - 1].toLowerCase();
+  const storno = ticket?.stage === "stornata" ? ticket : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,6 +67,11 @@ export function BillDetail({ billId }: { billId: string }) {
           </div>
         </div>
         {bill.status === "red_flag" && <p className="mt-2 text-sm font-semibold text-alert">+{percentOverAverage(bill)}% față de media ultimelor 12 luni</p>}
+        {storno && (
+          <p className="mt-2 text-sm font-semibold text-success">
+            Corectată prin factura storno. Inițial: {fmtRon(storno.paidAmount + storno.disputedAmount)}.
+          </p>
+        )}
         <HistoryBars bill={bill} />
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
           <FileText size={14} className="shrink-0" /> Factura {bill.invoiceNumber} · Cod client {bill.clientCode}
@@ -119,6 +125,7 @@ export function BillDetail({ billId }: { billId: string }) {
               <p className="mt-2 text-sm text-ink">
                 {record?.external ? "Ai marcat factura ca plătită în afara aplicației." : `Plata de ${fmtRon(event.amount)} a ajuns la ${bill.provider}.`}
                 {event.frozen > 0 ? ` Diferența de ${fmtRon(event.frozen)} rămâne înghețată până la factura storno.` : ""}
+                {storno ? ` Diferența de ${fmtRon(storno.disputedAmount)} a fost anulată prin factura storno.` : ""}
               </p>
               {record && (
                 <button onClick={() => setReceiptOpen(true)} className="btn-soft mt-4 w-full text-sm">
@@ -157,7 +164,9 @@ export function BillDetail({ billId }: { billId: string }) {
                   ? `Scadența a trecut de ${daysLabel(daysUntil(today, bill.dueDate))}. Plătește acum ca să eviți penalizările.`
                   : event.frozen > 0
                     ? `Mai ai de plătit suma necontestată. ${fmtRon(event.frozen)} rămân înghețați până la factura storno.`
-                    : "Factura e în regulă. Plătești direct din aplicație, fără comision."}
+                    : storno
+                      ? `${bill.provider} a corectat factura. Plătești doar suma corectă, fără comision.`
+                      : "Factura e în regulă. Plătești direct din aplicație, fără comision."}
               </p>
               <button onClick={() => openCheckout([toCheckoutItem(event)])} className="btn-dark mt-4 w-full">
                 Plătește {fmtRon(event.amount)}
@@ -185,7 +194,7 @@ export function BillDetail({ billId }: { billId: string }) {
         </button>
       )}
 
-      {justSent && <DisputeSentCard ticket={justSent} provider={bill.provider} />}
+      {justSent && <DisputeSentCard ticket={ticket ?? justSent} provider={bill.provider} />}
       {ticket && <TicketTracker ticket={ticket} provider={bill.provider} />}
 
       <SelfReadingCard bill={bill} />

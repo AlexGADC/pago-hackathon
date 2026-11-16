@@ -214,6 +214,18 @@ export function buildNotifications(input: NotificationInput): AppNotification[] 
   for (const t of input.tickets) {
     if (t.houseId !== input.houseId) continue;
     const bill = input.bills.find((b) => b.id === t.billId);
+    if (t.stage === "stornata") {
+      list.push({
+        id: `ticket-${t.id}-${t.stage}`,
+        tone: "success",
+        icon: "check",
+        title: `${bill?.provider ?? "Furnizorul"} a emis factura storno`,
+        body: `Ai economisit ${fmtRon(t.disputedAmount)}. Factura corectă este de ${fmtRon(t.paidAmount)}.`,
+        date: (t.resolvedAt ?? t.createdAt).slice(0, 10),
+        href: `/facturi/${t.billId}`,
+      });
+      continue;
+    }
     list.push({
       id: `ticket-${t.id}-${t.stage}`,
       tone: "info",

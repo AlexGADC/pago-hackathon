@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ProviderTemplate } from "@/data/catalog";
-import { DEMO_TODAY } from "@/lib/disputes";
+import { DEMO_TODAY, fmtRon } from "@/lib/disputes";
 import { demoNow } from "@/lib/format";
 import { buildNotifications, type AppNotification } from "@/lib/notifications";
 import { buildEvents, type LedgerData, type PaymentEvent } from "@/lib/payments";
@@ -29,6 +29,7 @@ import { store, subscribeNever } from "./store";
 const PAYMENT_STEP_MS = 1300;
 const SYNC_DELAY_MS = 1600;
 const TICKET_DELAY_MS = 3500;
+const STORNO_DELAY_MS = 6000;
 const SUPPORT_DELAY_MS = 4000;
 const TOAST_MS = 2800;
 
@@ -214,6 +215,20 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.tickets.some((t) => t.stage === "trimisa")) return;
     const timer = setTimeout(() => store.update(actions.advanceTickets), TICKET_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [state.tickets]);
+
+  useEffect(() => {
+    if (!state.tickets.some((t) => t.stage === "in_analiza")) return;
+    const timer = setTimeout(() => {
+      const closing = store.getSnapshot().tickets.filter((t) => t.stage === "in_analiza");
+      store.update((s) => actions.resolveTickets(s, demoNow()));
+      const stamp = Date.now();
+      setToasts((list) => [
+        ...list,
+        ...closing.map((t, index) => ({ id: stamp + index, text: `Factură stornată: ai economisit ${fmtRon(t.disputedAmount)}`, tone: "success" as const })),
+      ].slice(-3));
+    }, STORNO_DELAY_MS);
     return () => clearTimeout(timer);
   }, [state.tickets]);
 

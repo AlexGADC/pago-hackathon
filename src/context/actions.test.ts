@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { PROVIDER_CATALOG } from "@/data/catalog";
 import { POINTS } from "@/data/mockFamilyData";
+import { buildEvents } from "@/lib/payments";
 import type { CheckoutItem, DisputeTicket } from "@/types/pago";
 import * as actions from "./actions";
 import { createInitialState, restoreState, type AppState } from "./appState";
 
 const NOW = "2026-11-16T12:00:00";
+const LATER = "2026-11-16T12:05:00";
 
 const digi: CheckoutItem = { eventId: "bill-digi-2026-11", targetId: "bill-digi", targetKind: "bill", houseId: "acasa", title: "Digi România", amount: 62, category: "utilitati" };
 const gaz: CheckoutItem = { eventId: "bill-gaz-2026-11", targetId: "bill-gaz", targetKind: "bill", houseId: "acasa", title: "E.ON Energie", amount: 182, category: "utilitati" };
@@ -13,6 +15,11 @@ const maintenance: CheckoutItem = { eventId: "bill-intretinere-2026-11", targetI
 
 function settle(state: AppState): AppState {
   return actions.advancePayments(actions.advancePayments(state));
+}
+
+function electricaEvent(state: AppState) {
+  const ledger = { bills: state.bills, subscriptions: state.subscriptions, expiries: state.expiries, payments: state.payments, tickets: state.tickets, autopay: state.autopay };
+  return buildEvents(ledger, "acasa", 2026).find((e) => e.id === "bill-electrica-2026-11");
 }
 
 describe("payments", () => {
@@ -124,6 +131,34 @@ describe("disputes", () => {
   it("moves the ticket to analysis", () => {
     const sent = actions.submitDispute(createInitialState(), ticket, NOW, 10);
     expect(actions.advanceTickets(sent).tickets[0].stage).toBe("in_analiza");
+  });
+
+  it("closes the ticket with a storno invoice and releases the frozen amount", () => {
+    const analysed = actions.advanceTickets(settle(actions.submitDispute(createInitialState(), ticket, NOW, 16)));
+    expect(electricaEvent(analysed)).toMatchObject({ amount: 11, frozen: 1469, paid: true });
+
+    const closed = actions.resolveTickets(analysed, LATER);
+    expect(closed.tickets[0]).toMatchObject({ stage: "stornata", resolvedAt: LATER, disputedAmount: 1469 });
+    const bill = closed.bills.find((b) => b.id === "bill-electrica");
+    expect(bill).toMatchObject({ status: "platita", amount: 11 });
+    expect(bill?.meter?.billedIndex).toBe(15.79);
+    expect(electricaEvent(closed)).toMatchObject({ amount: 11, frozen: 0, paid: true });
+    expect(actions.resolveTickets(closed, LATER)).toBe(closed);
+  });
+
+  it("leaves the corrected bill payable when the storno arrives before the payment", () => {
+    const analysed = actions.advanceTickets(actions.submitDispute(createInitialState(), ticket, NOW, 17));
+    expect(analysed.bills.find((b) => b.id === "bill-electrica")?.status).toBe("contestata");
+
+    const closed = actions.resolveTickets(analysed, LATER);
+    expect(closed.bills.find((b) => b.id === "bill-electrica")).toMatchObject({ status: "normala", amount: 11 });
+    expect(electricaEvent(closed)).toMatchObject({ amount: 11, frozen: 0, paid: false });
+    expect(settle(closed).bills.find((b) => b.id === "bill-electrica")?.status).toBe("platita");
+  });
+
+  it("does not close a ticket the supplier has not picked up yet", () => {
+    const sent = actions.submitDispute(createInitialState(), ticket, NOW, 18);
+    expect(actions.resolveTickets(sent, LATER)).toBe(sent);
   });
 });
 
