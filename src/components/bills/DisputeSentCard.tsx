@@ -22,7 +22,7 @@ export function DisputeSentCard({ ticket, provider }: { ticket: DisputeTicket; p
       <div className="mt-4 inline-flex">
         <Tag tone="orange">+{POINTS.bounty} puncte Bounty în Family Pool 🎉</Tag>
       </div>
-      <p className="mt-4 rounded-2xl bg-app p-3 text-left text-xs leading-relaxed text-muted">{ticket.message}</p>
+      <p className="mt-4 rounded-2xl bg-surface-2 p-3 text-left text-xs leading-relaxed text-muted">{ticket.message}</p>
       <Link href="/" className="btn-dark mt-4 w-full">
         Înapoi la Acasă
       </Link>

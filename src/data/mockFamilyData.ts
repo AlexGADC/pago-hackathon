@@ -1,7 +1,7 @@
 // Date simulate: ce ar sincroniza Pago din conturile de furnizori ale Familiei Popescu.
 // Backend-ul și Frontend-ul citesc AMBELE de aici. Adăugați la final, nu rescrieți.
 
-import type { Bill, ExpiryItem, FamilyMember, House, Mission, MonthlyAmount, PoolGoal, Subscription } from "@/types/pago";
+import type { Bill, ExpiryItem, FamilyMember, House, Mission, MonthlyAmount, PoolGoal, Subscription, SupplierConnection } from "@/types/pago";
 
 export const FAMILY_NAME = "Familia Popescu";
 
@@ -174,4 +174,12 @@ export const expiries: ExpiryItem[] = [
   { id: "exp-rov-logan", houseId: "acasa", kind: "Rovinietă", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-01-14", price: 110 },
   { id: "exp-itp-logan", houseId: "acasa", kind: "ITP", vehicle: "Dacia Logan · CJ-12-POP", expiresOn: "2027-04-02", price: 140 },
   { id: "exp-rca-bunici", houseId: "bunici", kind: "RCA", vehicle: "Renault Clio · CJ-55-MRA", expiresOn: "2026-11-24", price: 980 },
+];
+
+export const supplierConnections: SupplierConnection[] = [
+  { provider: "Electrica Furnizare", status: "conectat", lastSyncAt: "2026-11-15T08:00:00" },
+  { provider: "E.ON Energie", status: "deconectat", lastSyncAt: "2026-11-10T08:00:00", problem: "Autentificarea a expirat. Reconectează contul ca să vezi facturile noi." },
+  { provider: "Digi România", status: "conectat", lastSyncAt: "2026-11-15T08:00:00" },
+  { provider: "Retim Salubritate", status: "conectat", lastSyncAt: "2026-11-14T08:00:00" },
+  { provider: "Compania de Apă Arieș", status: "conectat", lastSyncAt: "2026-11-15T08:00:00" },
 ];

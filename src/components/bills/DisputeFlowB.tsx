@@ -53,7 +53,7 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       <p className="mt-1 text-sm text-muted">Uită-te doar la linia marcată.</p>
 
       
-      <div className="mt-4 rounded-2xl border border-line bg-app p-4">
+      <div className="mt-4 rounded-2xl border border-line bg-surface-2 p-4">
         <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted">
           <FileText size={14} /> Din PDF-ul facturii {bill.provider}
         </p>
@@ -71,14 +71,14 @@ export function DisputeFlowB({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       </div>
 
       {/* Rezumat: cât plătești acum și cât se îngheață */}
-      <div className="mt-4 rounded-2xl bg-app p-4">
+      <div className="mt-4 rounded-2xl bg-surface-2 p-4">
         <Tag tone="blue">✨ Linie suspectă detectată</Tag>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-white p-3 shadow-card">
+          <div className="rounded-2xl bg-surface p-3 shadow-card">
             <p className="text-xs text-muted">Plătești acum</p>
             <p className="text-2xl font-extrabold text-success">{fmtRon(correctAmount)}</p>
           </div>
-          <div className="rounded-2xl bg-white p-3 shadow-card">
+          <div className="rounded-2xl bg-surface p-3 shadow-card">
             <p className="flex items-center gap-1 text-xs text-muted">
               <Snowflake size={12} /> Înghețat
             </p>

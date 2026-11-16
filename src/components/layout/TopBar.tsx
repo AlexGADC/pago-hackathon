@@ -26,7 +26,7 @@ export function TopBar() {
           <img src={house.avatar} alt={house.name} className="size-full object-cover" />
         </button>
         <span className="text-[17px] font-extrabold lowercase tracking-tight text-white">pago</span>
-        <button onClick={resetDemo} title="Reset Demo" className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-white/80 hover:bg-white/10">
+        <button onClick={resetDemo} title="Reset Demo" className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-white/80 hover:bg-surface/10">
           <RotateCcw size={12} /> reset
         </button>
       </div>
@@ -34,10 +34,10 @@ export function TopBar() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-3 right-3 top-full z-20 mt-2 rounded-[28px] border border-white/20 bg-ink/70 p-4 text-white shadow-float backdrop-blur-xl">
+          <div className="absolute left-3 right-3 top-full z-20 mt-2 rounded-[28px] border border-white/20 bg-black/70 p-4 text-white shadow-float backdrop-blur-xl">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-bold text-white">Cine folosește aplicația?</p>
-              <button onClick={() => setOpen(false)} aria-label="Închide" className="grid size-8 place-items-center rounded-full bg-white/20">
+              <button onClick={() => setOpen(false)} aria-label="Închide" className="grid size-8 place-items-center rounded-full bg-surface/20">
                 <X size={16} />
               </button>
             </div>
@@ -47,7 +47,7 @@ export function TopBar() {
                   key={h.id}
                   onClick={() => choose(h.id)}
                   className={`flex w-28 shrink-0 snap-start flex-col items-center gap-2 rounded-2xl p-3 text-center transition ${
-                    activeHouse === h.id ? "bg-white text-ink shadow-card" : "bg-white/10 text-white"
+                    activeHouse === h.id ? "bg-surface text-ink shadow-card" : "bg-surface/10 text-white"
                   }`}
                 >
                   <span className="size-16 overflow-hidden rounded-full">
@@ -57,7 +57,7 @@ export function TopBar() {
                 </button>
               ))}
               <button className="flex w-28 shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/60 p-3 text-white">
-                <span className="grid size-16 place-items-center rounded-full bg-white/15">
+                <span className="grid size-16 place-items-center rounded-full bg-surface/15">
                   <Plus size={24} />
                 </span>
                 <span className="text-xs font-bold leading-tight">Adaugă profil</span>

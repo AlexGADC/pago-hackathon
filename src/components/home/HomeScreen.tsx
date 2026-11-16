@@ -7,6 +7,7 @@ import { useFamily } from "@/context/FamilyContext";
 import { FAMILY_NAME } from "@/data/mockFamilyData";
 import { CATEGORY_META, buildEvents, eventsInMonth, eventsOnDay, monthDays, splitPaid, toIso, weekdayIndex, type PaymentEvent } from "@/lib/payments";
 import { DEMO_TODAY, fmtRon } from "@/lib/disputes";
+import { PaymentStatusTag } from "@/components/payments/PaymentStatus";
 import { dueReminders, reminderLabel } from "@/lib/reminders";
 
 const MONTHS = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"];
@@ -20,30 +21,33 @@ const CATEGORY_ICON: Record<PaymentEvent["category"], typeof Receipt> = {
   asigurari: Car,
 };
 
-function Avatar({ event }: { event: PaymentEvent }) {
+function Avatar({ event, small = false }: { event: PaymentEvent; small?: boolean }) {
   const meta = CATEGORY_META[event.category];
   const Icon = CATEGORY_ICON[event.category];
   return (
     <span
       title={event.title}
-      className={`grid size-6 shrink-0 place-items-center rounded-md ${
-        event.paid ? `${meta.dot} text-white` : `bg-white ${meta.text} border-2 border-current`
+      className={`grid ${small ? "size-5 rounded" : "size-6 rounded-md"} shrink-0 place-items-center ${
+        event.paid ? `${meta.dot} text-white` : `bg-surface ${meta.text} border-2 border-current`
       }`}
     >
-      <Icon size={12} strokeWidth={2.4} />
+      <Icon size={small ? 10 : 12} strokeWidth={2.4} />
     </span>
   );
 }
 
 export function HomeScreen() {
-  const { house, bills } = useFamily();
+  const { house, bills, payments, payEvent } = useFamily();
   const [cursor, setCursor] = useState({ year: todayYear, month: todayMonth });
   const [openDate, setOpenDate] = useState<string | null>(null);
   const [paidIds, setPaidIds] = useState<string[]>([]);
   const [snoozed, setSnoozed] = useState<string[]>([]);
 
   const baseEvents = useMemo(() => buildEvents(house.id, cursor.year), [house.id, cursor.year]);
-  const events = useMemo(() => baseEvents.map((e) => (paidIds.includes(e.id) ? { ...e, paid: true } : e)), [baseEvents, paidIds]);
+  const events = useMemo(
+    () => baseEvents.map((e) => (paidIds.includes(e.id) || payments.some((p) => p.eventId === e.id && p.status === "confirmata") ? { ...e, paid: true } : e)),
+    [baseEvents, paidIds, payments],
+  );
   const reminders = useMemo(() => dueReminders(events).filter((r) => !snoozed.includes(r.event.id)), [events, snoozed]);
   const monthEvents = useMemo(() => eventsInMonth(events, cursor.year, cursor.month), [events, cursor]);
   const { paid, remaining } = splitPaid(monthEvents);
@@ -79,7 +83,7 @@ export function HomeScreen() {
       )}
 
       {reminders.length > 0 && (
-        <section className="rounded-card bg-white p-4 shadow-card">
+        <section className="rounded-card bg-surface p-4 shadow-card">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-muted">Remindere</p>
             <span className="text-[11px] font-semibold text-muted">7 zile · 3 zile · ziua scadenței</span>
@@ -98,10 +102,10 @@ export function HomeScreen() {
                   <span className="shrink-0 font-bold text-ink">{fmtRon(r.event.amount)}</span>
                 </div>
                 <div className="flex gap-2 pl-[52px]">
-                  <button onClick={() => setPaidIds((ids) => [...ids, r.event.id])} className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">
+                  <button onClick={() => setPaidIds((ids) => [...ids, r.event.id])} className="rounded-full bg-pago-blue px-3 py-1 text-xs font-semibold text-white">
                     Marchează plătit
                   </button>
-                  <button onClick={() => setSnoozed((ids) => [...ids, r.event.id])} className="rounded-full bg-app px-3 py-1 text-xs font-semibold text-ink">
+                  <button onClick={() => setSnoozed((ids) => [...ids, r.event.id])} className="rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold text-ink">
                     Amână
                   </button>
                 </div>
@@ -111,9 +115,9 @@ export function HomeScreen() {
         </section>
       )}
 
-      <section className="rounded-card bg-white p-2 shadow-card">
+      <section className="rounded-card bg-surface p-2 shadow-card">
         <div className="flex items-center justify-between gap-2">
-          <Link href="/statistici" aria-label="Statistici" className="grid size-10 shrink-0 place-items-center rounded-full bg-app text-ink">
+          <Link href="/statistici" aria-label="Statistici" className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2 text-ink">
             <BarChart3 size={18} />
           </Link>
           <div className="min-w-0 text-center">
@@ -125,10 +129,10 @@ export function HomeScreen() {
             </p>
           </div>
           <div className="flex gap-1">
-            <button onClick={() => shiftMonth(-1)} aria-label="Luna anterioară" className="grid size-9 place-items-center rounded-full bg-app text-ink">
+            <button onClick={() => shiftMonth(-1)} aria-label="Luna anterioară" className="grid size-9 place-items-center rounded-full bg-surface-2 text-ink">
               <ChevronLeft size={18} />
             </button>
-            <button onClick={() => shiftMonth(1)} aria-label="Luna următoare" className="grid size-9 place-items-center rounded-full bg-app text-ink">
+            <button onClick={() => shiftMonth(1)} aria-label="Luna următoare" className="grid size-9 place-items-center rounded-full bg-surface-2 text-ink">
               <ChevronRight size={18} />
             </button>
           </div>
@@ -136,7 +140,7 @@ export function HomeScreen() {
 
         <div className="mt-2 grid grid-cols-7 gap-x-0.5 gap-y-1">
           {WEEKDAYS.map((d) => (
-            <span key={d} className="rounded-full bg-app py-1.5 text-center text-xs font-semibold text-muted">
+            <span key={d} className="rounded-full bg-surface-2 py-1.5 text-center text-xs font-semibold text-muted">
               {d}
             </span>
           ))}
@@ -151,7 +155,7 @@ export function HomeScreen() {
               <button
                 key={date}
                 onClick={() => setOpenDate(date)}
-                className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-xl p-0.5 text-base font-bold transition hover:bg-app ${
+                className={`flex aspect-square min-h-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl p-0.5 text-sm font-bold transition hover:bg-surface-2 ${
                   isToday ? "ring-2 ring-pago-blue text-pago-blue" : "text-ink"
                 }`}
               >
@@ -159,9 +163,9 @@ export function HomeScreen() {
                 {dayEvents.length > 0 && (
                   <span className={`grid w-full place-items-center gap-0.5 ${dayEvents.length === 1 ? "" : "grid-cols-2"}`}>
                     {dayEvents.slice(0, dayEvents.length > 4 ? 3 : 4).map((e) => (
-                      <Avatar key={e.id} event={e} />
+                      <Avatar key={e.id} event={e} small />
                     ))}
-                    {dayEvents.length > 4 && <span className="grid size-6 place-items-center rounded-md bg-app text-[10px] font-bold text-muted">+{dayEvents.length - 3}</span>}
+                    {dayEvents.length > 4 && <span className="grid size-6 place-items-center rounded-md bg-surface-2 text-[10px] font-bold text-muted">+{dayEvents.length - 3}</span>}
                   </span>
                 )}
               </button>
@@ -170,7 +174,7 @@ export function HomeScreen() {
         </div>
       </section>
 
-      <section className="rounded-card bg-white p-4 shadow-card">
+      <section className="rounded-card bg-surface p-4 shadow-card">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">De plătit în {MONTHS[cursor.month - 1].toLowerCase()}</p>
         {unpaid.length === 0 ? (
           <p className="text-sm text-muted">Ai plătit tot în această lună.</p>
@@ -187,7 +191,16 @@ export function HomeScreen() {
                     </p>
                   </div>
                 </div>
-                <span className="shrink-0 font-bold text-ink">{fmtRon(e.amount)}</span>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className="font-bold text-ink">{fmtRon(e.amount)}</span>
+                  {payments.find((p) => p.eventId === e.id)?.status === "in_asteptare" ? (
+                    <PaymentStatusTag status="in_asteptare" />
+                  ) : (
+                    <button onClick={() => payEvent(e.id, e.title, e.amount)} className="rounded-full bg-pago-blue px-3 py-1 text-xs font-semibold text-white">
+                      {payments.find((p) => p.eventId === e.id)?.status === "esuata" ? "Reîncearcă" : "Plătește"}
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -195,8 +208,8 @@ export function HomeScreen() {
       </section>
 
       {openDate && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-ink/40 p-6" onClick={() => setOpenDate(null)}>
-          <div className="w-full max-w-[360px] rounded-card bg-white p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 p-6" onClick={() => setOpenDate(null)}>
+          <div className="w-full max-w-[360px] rounded-card bg-surface p-5 shadow-float" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <p className="font-extrabold text-ink">
                 {(() => {
@@ -204,7 +217,7 @@ export function HomeScreen() {
                   return `${d} ${MONTHS[m - 1].toLowerCase()}`;
                 })()}
               </p>
-              <button onClick={() => setOpenDate(null)} aria-label="Închide" className="grid size-8 place-items-center rounded-full bg-app text-ink">
+              <button onClick={() => setOpenDate(null)} aria-label="Închide" className="grid size-8 place-items-center rounded-full bg-surface-2 text-ink">
                 <X size={16} />
               </button>
             </div>

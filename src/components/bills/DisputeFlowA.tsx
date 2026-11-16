@@ -52,7 +52,7 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
 
       <label className="mt-5 block">
         <span className="text-sm font-semibold text-ink">Indexul de pe contorul tău</span>
-        <div className="mt-2 flex items-center rounded-2xl border border-line bg-white px-4 focus-within:border-pago-blue">
+        <div className="mt-2 flex items-center rounded-2xl border border-line bg-surface px-4 focus-within:border-pago-blue">
           <input
             inputMode="decimal"
             value={indexText}
@@ -67,17 +67,17 @@ export function DisputeFlowA({ bill, onSent }: { bill: Bill; onSent: (ticket: Di
       </label>
 
       {validation?.ok && (
-        <div className="mt-5 rounded-2xl bg-app p-4">
+        <div className="mt-5 rounded-2xl bg-surface-2 p-4">
           <Tag tone="orange">{CONFIDENCE}</Tag>
           <p className="mt-3 text-sm text-muted">
             Consum real: <b className="text-ink">{fmtNum(validation.consumption)} {meter.unit}</b>
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white p-3 shadow-card">
+            <div className="rounded-2xl bg-surface p-3 shadow-card">
               <p className="text-xs text-muted">Plătești acum</p>
               <p className="text-2xl font-extrabold text-success">{fmtRon(validation.correctAmount)}</p>
             </div>
-            <div className="rounded-2xl bg-white p-3 shadow-card">
+            <div className="rounded-2xl bg-surface p-3 shadow-card">
               <p className="flex items-center gap-1 text-xs text-muted">
                 <Snowflake size={12} /> Înghețat
               </p>

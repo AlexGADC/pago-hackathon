@@ -111,7 +111,7 @@ export function StatsScreen() {
   return (
     <div className="flex flex-col gap-4 pt-2">
       <header className="flex items-center gap-3">
-        <Link href="/" aria-label="Înapoi la acasă" className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-ink shadow-card">
+        <Link href="/" aria-label="Înapoi la acasă" className="grid size-11 shrink-0 place-items-center rounded-full bg-surface text-ink shadow-card">
           <ArrowLeft size={20} />
         </Link>
         <h1 className="text-xl font-bold text-ink">Statistici · {house.name}</h1>
@@ -128,7 +128,7 @@ export function StatsScreen() {
                   setYear(Number(e.target.value));
                   setActiveMonth(null);
                 }}
-                className="rounded-full bg-app px-3 py-1 text-sm font-bold text-ink outline-none"
+                className="rounded-full bg-surface-2 px-3 py-1 text-sm font-bold text-ink outline-none"
                 aria-label="Alege anul"
               >
                 {YEARS.map((y) => (
@@ -142,11 +142,11 @@ export function StatsScreen() {
               Ai {summary.items.length} {summary.items.length === 1 ? "plată activă" : "plăți active"} în {year}
             </p>
           </div>
-          <div className="flex rounded-full bg-app p-1 text-xs font-semibold">
-            <button onClick={() => setMode("year")} className={`rounded-full px-3 py-1.5 ${mode === "year" ? "bg-white text-ink shadow-card" : "text-muted"}`}>
+          <div className="flex rounded-full bg-surface-2 p-1 text-xs font-semibold">
+            <button onClick={() => setMode("year")} className={`rounded-full px-3 py-1.5 ${mode === "year" ? "bg-surface text-ink shadow-card" : "text-muted"}`}>
               An
             </button>
-            <button onClick={() => setMode("category")} className={`rounded-full px-3 py-1.5 ${mode === "category" ? "bg-white text-ink shadow-card" : "text-muted"}`}>
+            <button onClick={() => setMode("category")} className={`rounded-full px-3 py-1.5 ${mode === "category" ? "bg-surface text-ink shadow-card" : "text-muted"}`}>
               Categorie
             </button>
           </div>
@@ -175,7 +175,7 @@ export function StatsScreen() {
 
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-5">
           <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-app text-ink">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-ink">
               <Wallet size={18} />
             </span>
             <div className="min-w-0">
@@ -184,7 +184,7 @@ export function StatsScreen() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-app text-ink">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-ink">
               <Repeat size={18} />
             </span>
             <div className="min-w-0">
