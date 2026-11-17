@@ -212,7 +212,7 @@ export function BillDetail({ billId }: { billId: string }) {
       )}
 
       {justSent && <DisputeSentCard ticket={ticket ?? justSent} bill={bill} />}
-      {ticket && <TicketTracker ticket={ticket} bill={bill} />}
+      {ticket && <TicketTracker ticket={ticket} bill={bill} download={!justSent} />}
 
       <SelfReadingCard bill={bill} />
 

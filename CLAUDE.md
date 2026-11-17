@@ -11,11 +11,11 @@ Meniul de jos: **Acasă**, **Facturi**, **Abonamente**, **Asigurări**. Nu se ad
 Bara de sus: iconița de profil din stânga deschide fereastra de sticlă închisă cu profilurile pe orizontală, „Adaugă profil” la final și legătura „Contul meu și setări”. Clopoțelul din dreapta deschide notificările și arată câte sunt necitite.
 
 - **Acasă** (`/`): bannerul de alertă, scurtăturile (Istoric, Plăți automate, Alte plăți, Familie), calendarul lunii cu iconițe pe categorii și totalul scris mic sub lună, reminderele (Plătește, Am plătit deja, Amână), lista „De plătit în lună” cu „Plătește tot”, fereastra zilei. Calendarul rămâne elementul principal al paginii: celule pătrate, spații mici, fără alt layout în locul lui.
-- **Facturi** (`/facturi`, `/facturi/[id]`, `/facturi/furnizori`): lista facturilor cu starea conexiunii și a plății, facturi întârziate, plata, chitanța, istoricul pe 12 luni, autocitirea indexului, plata automată, împărțirea cu familia, contestarea (Flux A cu index manual, Flux B cu un tap) și urmărirea sesizării. Din „Furnizori” conectezi, reconectezi sau elimini un furnizor.
+- **Facturi** (`/facturi`, `/facturi/[id]`, `/facturi/furnizori`): lista facturilor cu starea conexiunii și a plății, facturi întârziate, plata, chitanța, istoricul pe 12 luni, autocitirea indexului, plata automată, împărțirea cu familia, contestarea (Flux A cu index manual, Flux B cu un tap), urmărirea sesizării și descărcarea ei ca PDF. Din „Furnizori” conectezi, reconectezi sau elimini un furnizor.
 - **Abonamente** (`/abonamente`, `/abonamente/[id]`, `/abonamente/nou`): lunare, trimestriale și anuale. Adăugare din lista de servicii cunoscute sau manual, editare, pauză, anulare, reactivare, ștergere. Avertizări pentru trial care se termină, scumpire și abonament nefolosit.
 - **Asigurări** (`/asigurari`, `/asigurari/[id]`, `/asigurari/nou`): RCA, rovinietă, ITP și PAD, grupate pe mașină sau locuință, cu zilele rămase. Reînnoirea se face din aplicație, cu oferte de comparat.
 - **Statistici** (`/statistici`): an sau categorie, radar pe luni, inel pe categorii, plata anuală, costul mediu lunar, bugetul lunar și observații.
-- **Istoric** (`/istoric`): toate plățile, cu căutare, filtre (perioadă, categorie, stare), chitanță și export CSV.
+- **Istoric** (`/istoric`): toate plățile, cu căutare, filtre (perioadă, categorie, stare), chitanță (se descarcă drept PDF) și export CSV.
 - **Notificări** (`/notificari`): tot ce cere atenție, calculat din date (scadențe, plăți eșuate, furnizori deconectați, scumpiri, documente care expiră, buget depășit).
 - **Profil** (`/profil`): cardurile (`/profil/carduri`), plățile automate (`/profil/plati-automate`), setările (`/profil/setari`: praguri de remindere, canale, buget, blocarea aplicației), punctele și „Resetează demo”.
 - **Familie** (`/familie`): membrii, invitațiile, cheltuielile împărțite și misiunile cu puncte.
@@ -58,7 +58,31 @@ Toate plățile trec prin `CheckoutSheet`, deschis cu `openCheckout(items)`. Pa�
 
 Totul este simulat: plata avansează singură după câteva secunde.
 
-## 5. Backend
+## 5. Documente PDF
+
+Chitanța oricărei plăți și sesizarea unei facturi contestate se descarcă drept PDF, generat în browser, fără server.
+
+- `src/lib/documents.ts`: conținutul documentelor (`receiptDocument`, `disputeDocument`), ca date simple, fără legătură cu PDF-ul. Aici se schimbă textele și rândurile. Chitanța are aceeași structură pentru facturi, abonamente, asigurări și plăți rapide, doar rândurile din „Detalii plată” diferă.
+- `src/lib/pdf/`: desenarea. `canvas.ts` are piesele comune (antet, carduri, grilă, tabel, note, subsol, trecerea pe pagina următoare), `receipt.ts` și `dispute.ts` așază fiecare document, `theme.ts` are culorile (copiate din tokenii din `globals.css`, singurul loc cu culori hex în afara lui), `index.ts` încarcă fonturile.
+- `src/components/shared/useDocumentDownload.ts`: legătura cu ecranele. Butoanele sunt în `ReceiptSheet` („Descarcă PDF”) și în `DisputeDownload` („Descarcă sesizarea (PDF)”).
+- `public/fonts/`: fontul Inter redus la literele latine și românești, cu licența lui (`Inter-LICENSE.txt`). Biblioteca `pdf-lib` se încarcă doar la apăsarea butonului.
+
+Reguli:
+
+- Nu folosiți `subset: true` la `embedFont`. Micșorarea făcută de `pdf-lib` strică literele. Fontul este deja redus.
+- Orice text trece prin `Canvas.text`, care scoate caracterele pe care fontul nu le are (de exemplu emoji).
+- Fiecare document trebuie să încapă pe o pagină în cazurile obișnuite. Verificați vizual după orice schimbare de așezare.
+- Documentele spun clar că sunt demonstrative. Nu scoateți această mențiune.
+
+Pentru a vedea documentele fără să porniți aplicația, testele le pot scrie într-un folder:
+
+```bash
+PAGO_PDF_OUT=pdf-probe npm test
+```
+
+În PowerShell: `$env:PAGO_PDF_OUT="pdf-probe"; npm test`. Folderul `pdf-probe/` este ignorat de git.
+
+## 6. Backend
 
 Rulează în aceeași aplicație Next.js, fără servicii externe și fără pachete noi.
 
@@ -78,7 +102,7 @@ Rute (`src/app/api/`):
 
 O acțiune nouă se adaugă în patru locuri: funcția din `actions.ts`, comanda din `commands.ts`, validatorul din `validate.ts` și, dacă trebuie, verificarea din `stateRepo.ts`. Un cont nou pornește cu datele demo ale Familiei Popescu.
 
-## 6. Design
+## 7. Design
 
 Stil luminos: fundal verde-mentă, carduri aproape albe foarte rotunjite, text verde-negru, accente verzi. Tokenii sunt în `src/app/globals.css`. Nu scrieți culori hex în componente, folosiți tokenii (`bg-surface`, `text-ink`, `text-muted`, `bg-surface-2`, `bg-hero`, `btn-dark`, `btn-blue`, `btn-soft`, `pill`, `pill-primary`, `pill-soft`, `field-input`, `tag-*`, `bg-cat-*`).
 
@@ -86,7 +110,7 @@ Piesele comune sunt în `src/components/shared/`: `Card`, `Sheet`, `PageHeader`,
 
 Limba interfeței este română, ton cald.
 
-## 7. Reguli de lucru
+## 8. Reguli de lucru
 
 - Fără comentarii în cod. Nu adăugați comentarii în fișierele noi sau modificate.
 - Titlurile de commit în engleză, fără linie `Co-Authored-By`.
@@ -100,7 +124,7 @@ Limba interfeței este română, ton cald.
 - Starea se schimbă doar prin funcțiile din `src/context/actions.ts`, apelate prin comenzile din `src/context/commands.ts`.
 - Codul din `src/server/` nu se importă în componente. Parolele și codurile de sesiune nu se scriu în jurnal și nu ajung în răspunsuri.
 
-## 8. Comenzi
+## 9. Comenzi
 
 ```bash
 npm install
@@ -122,12 +146,12 @@ Teste:
 npm test
 ```
 
-## 9. Ce nu este în prototip
+## 10. Ce nu este în prototip
 
 - Resetarea parolei prin e-mail și confirmarea adresei de e-mail.
 - Familie cu mai multe conturi pe aceleași date. Membrii sunt doar nume în contul tău.
 - Conectare reală la furnizori și procesator de plăți real.
 - Notificări push, e-mail sau SMS reale. Canalele se aleg în setări, dar reminderele apar doar în aplicație.
-- Chitanțe PDF reale. Chitanța se descarcă drept text.
+- Documente cu valoare fiscală sau juridică. Chitanța și sesizarea PDF sunt demonstrative, iar sesizarea nu ajunge real la furnizor.
 - Oferte reale de la asigurători. Prețurile sunt simulate.
 - Inteligență artificială. A fost eliminată din prototip.

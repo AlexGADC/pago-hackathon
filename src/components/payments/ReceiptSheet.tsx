@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { Download, LifeBuoy, Users } from "lucide-react";
 import { Sheet } from "@/components/shared/Sheet";
+import { useDocumentDownload } from "@/components/shared/useDocumentDownload";
 import { fmtRon } from "@/lib/disputes";
-import { downloadText } from "@/lib/download";
 import { fmtDateTime } from "@/lib/format";
-import { receiptText } from "@/lib/history";
 import type { PaymentRecord } from "@/types/pago";
 import { PaymentStatusTag, PaymentTimeline } from "./PaymentStatus";
 import { SplitSheet } from "./SplitSheet";
@@ -23,6 +22,7 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
 
 export function ReceiptSheet({ record, onClose }: { record: PaymentRecord; onClose: () => void }) {
   const [splitOpen, setSplitOpen] = useState(false);
+  const documents = useDocumentDownload();
 
   return (
     <>
@@ -50,8 +50,8 @@ export function ReceiptSheet({ record, onClose }: { record: PaymentRecord; onClo
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <button onClick={() => downloadText(`chitanta-${record.reference}.txt`, receiptText(record))} className="btn-soft text-sm">
-            <Download size={16} /> Descarcă
+          <button onClick={() => void documents.receipt(record)} disabled={documents.busy} className="btn-soft text-sm disabled:opacity-60">
+            <Download size={16} /> {documents.busy ? "Se generează…" : "Descarcă PDF"}
           </button>
           <button onClick={() => setSplitOpen(true)} className="btn-soft text-sm">
             <Users size={16} /> Împarte

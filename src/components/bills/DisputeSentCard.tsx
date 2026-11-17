@@ -6,6 +6,7 @@ import { Card, Tag } from "@/components/shared/Card";
 import { POINTS } from "@/data/mockFamilyData";
 import { fmtRon, legalDeadlineLabel } from "@/lib/disputes";
 import type { Bill, DisputeTicket } from "@/types/pago";
+import { DisputeDownload } from "./DisputeDownload";
 
 export function DisputeSentCard({ ticket, bill }: { ticket: DisputeTicket; bill: Bill }) {
   const closed = ticket.stage === "stornata";
@@ -22,8 +23,9 @@ export function DisputeSentCard({ ticket, bill }: { ticket: DisputeTicket; bill:
           ? `${bill.provider} a emis factura storno. Ai economisit ${fmtRon(ticket.disputedAmount)}, iar factura corectă este de ${fmtRon(ticket.paidAmount)}.`
           : `Plătești acum ${fmtRon(ticket.paidAmount)} · Ceri suspendarea pentru ${fmtRon(ticket.disputedAmount)}. ${bill.provider} are la dispoziție ${legalDeadlineLabel(bill)} ca să răspundă.`}
       </p>
-      <div className="mt-4 inline-flex">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <Tag tone="orange">+{POINTS.bounty} puncte Pago 🎉</Tag>
+        <DisputeDownload ticket={ticket} bill={bill} />
       </div>
       <Link href="/" className="btn-dark mt-4 w-full">
         Înapoi la Acasă

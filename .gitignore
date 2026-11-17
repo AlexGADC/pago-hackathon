@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local database
 /data/
+
+# sample PDFs written by the tests
+/pdf-probe/
