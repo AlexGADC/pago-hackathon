@@ -23,7 +23,9 @@ import type {
   TargetKind,
 } from "@/types/pago";
 import * as actions from "./actions";
+import { hasPendingWork } from "./commands";
 import type { AppState } from "./appState";
+import { session, useSession } from "./session";
 import { store, subscribeNever } from "./store";
 
 const PAYMENT_STEP_MS = 1300;
@@ -32,6 +34,8 @@ const TICKET_DELAY_MS = 3500;
 const STORNO_DELAY_MS = 6000;
 const AUTOPAY_DELAY_MS = 1200;
 const SUPPORT_DELAY_MS = 4000;
+const POLL_MS = 1500;
+const IDLE_POLLS = 10;
 const TOAST_MS = 2800;
 
 export type ToastTone = "success" | "info" | "alert";
@@ -56,111 +60,114 @@ export interface AutopayDraft {
   name: string;
 }
 
+const stamp = () => Date.now();
+const code = () => Date.now().toString(36);
+
 const api = {
   pay(items: CheckoutItem[], methodId: string, usePoints: boolean): string[] {
-    const stamp = Date.now();
-    store.update((s) => actions.startPayments(s, { items, methodId, usePoints, now: demoNow(), stamp }));
-    return items.map((_, index) => `pay-${stamp}-${index}`);
+    const at = stamp();
+    store.dispatch({ type: "pay", args: { items, methodId, usePoints, now: demoNow(), stamp: at } });
+    return items.map((_, index) => `pay-${at}-${index}`);
   },
   payExternally(item: CheckoutItem): void {
-    store.update((s) => actions.markPaidExternally(s, item, demoNow(), Date.now()));
+    store.dispatch({ type: "payExternally", args: { item, now: demoNow(), stamp: stamp() } });
   },
   submitDispute(ticket: DisputeTicket): void {
-    store.update((s) => actions.submitDispute(s, ticket, demoNow(), Date.now()));
+    store.dispatch({ type: "submitDispute", args: { ticket, now: demoNow(), stamp: stamp() } });
   },
   reconnect(provider: string, houseId: HouseId): void {
-    store.update((s) => actions.reconnect(s, provider, houseId));
+    store.dispatch({ type: "reconnect", args: { provider, houseId } });
   },
   connectProvider(template: ProviderTemplate, houseId: HouseId, clientCode: string): void {
-    store.update((s) => actions.connectProvider(s, { template, houseId, clientCode, now: demoNow(), stamp: Date.now() }));
+    store.dispatch({ type: "connectProvider", args: { template, houseId, clientCode, now: demoNow(), stamp: stamp() } });
   },
   removeProvider(provider: string, houseId: HouseId): void {
-    store.update((s) => actions.removeProvider(s, provider, houseId));
+    store.dispatch({ type: "removeProvider", args: { provider, houseId } });
   },
   addSubscription(sub: Omit<Subscription, "id">): string {
-    const id = `sub-${Date.now().toString(36)}`;
-    store.update((s) => actions.addSubscription(s, { ...sub, id }));
+    const id = `sub-${code()}`;
+    store.dispatch({ type: "addSubscription", args: { sub: { ...sub, id } } });
     return id;
   },
   updateSubscription(id: string, patch: Partial<Subscription>): void {
-    store.update((s) => actions.updateSubscription(s, id, patch));
+    store.dispatch({ type: "updateSubscription", args: { id, patch } });
   },
   setSubscriptionStatus(id: string, status: SubscriptionStatus): void {
-    store.update((s) => actions.setSubscriptionStatus(s, id, status, DEMO_TODAY));
+    store.dispatch({ type: "setSubscriptionStatus", args: { id, status } });
   },
   removeSubscription(id: string): void {
-    store.update((s) => actions.removeSubscription(s, id));
+    store.dispatch({ type: "removeSubscription", args: { id } });
   },
   addExpiry(item: Omit<ExpiryItem, "id">): string {
-    const id = `exp-${Date.now().toString(36)}`;
-    store.update((s) => actions.addExpiry(s, { ...item, id }));
+    const id = `exp-${code()}`;
+    store.dispatch({ type: "addExpiry", args: { item: { ...item, id } } });
     return id;
   },
   updateExpiry(id: string, patch: Partial<ExpiryItem>): void {
-    store.update((s) => actions.updateExpiry(s, id, patch));
+    store.dispatch({ type: "updateExpiry", args: { id, patch } });
   },
   removeExpiry(id: string): void {
-    store.update((s) => actions.removeExpiry(s, id));
+    store.dispatch({ type: "removeExpiry", args: { id } });
   },
   saveAutopay(draft: AutopayDraft): void {
-    store.update((s) => actions.saveAutopay(s, { ...draft, now: demoNow(), stamp: Date.now() }));
+    store.dispatch({ type: "saveAutopay", args: { ...draft, now: demoNow(), stamp: stamp() } });
   },
   disableAutopay(targetId: string, name: string): void {
-    store.update((s) => actions.disableAutopay(s, targetId, name, demoNow(), Date.now()));
+    store.dispatch({ type: "disableAutopay", args: { targetId, name, now: demoNow(), stamp: stamp() } });
   },
   addMethod(method: Omit<PaymentMethod, "id">): void {
-    store.update((s) => actions.addMethod(s, { ...method, id: `pm-${Date.now().toString(36)}` }));
+    store.dispatch({ type: "addMethod", args: { method: { ...method, id: `pm-${code()}` } } });
   },
   removeMethod(id: string): void {
-    store.update((s) => actions.removeMethod(s, id));
+    store.dispatch({ type: "removeMethod", args: { id } });
   },
   setDefaultMethod(id: string): void {
-    store.update((s) => actions.setDefaultMethod(s, id));
+    store.dispatch({ type: "setDefaultMethod", args: { id } });
   },
   updateSettings(patch: Partial<Settings>): void {
-    store.update((s) => actions.updateSettings(s, patch));
+    store.dispatch({ type: "updateSettings", args: { patch } });
   },
   addHouse(house: Omit<House, "id">): void {
-    store.update((s) => actions.addHouse(s, { ...house, id: `casa-${Date.now().toString(36)}` }));
+    store.dispatch({ type: "addHouse", args: { house: { ...house, id: `casa-${code()}` } } });
   },
   setActiveHouse(id: HouseId): void {
-    store.update((s) => actions.setActiveHouse(s, id));
+    store.dispatch({ type: "setActiveHouse", args: { id } });
   },
   inviteMember(member: Omit<FamilyMember, "id" | "points" | "pending">): void {
-    store.update((s) => actions.inviteMember(s, { ...member, id: `m-${Date.now().toString(36)}`, points: 0, pending: true }));
+    store.dispatch({ type: "inviteMember", args: { member: { ...member, id: `m-${code()}`, points: 0, pending: true } } });
   },
   removeMember(id: string): void {
-    store.update((s) => actions.removeMember(s, id));
+    store.dispatch({ type: "removeMember", args: { id } });
   },
   completeMission(id: string): void {
-    store.update((s) => actions.completeMission(s, id));
+    store.dispatch({ type: "completeMission", args: { id } });
   },
   submitReading(billId: string, index: number): void {
-    store.update((s) => actions.submitReading(s, billId, index, demoNow()));
+    store.dispatch({ type: "submitReading", args: { billId, index, now: demoNow() } });
   },
   createSplit(split: Omit<SplitRequest, "id" | "createdAt" | "link">): SplitRequest {
-    const code = Date.now().toString(36);
-    const created: SplitRequest = { ...split, id: `split-${code}`, createdAt: demoNow(), link: `https://pago.ro/s/${code}` };
-    store.update((s) => actions.createSplit(s, created));
+    const key = code();
+    const created: SplitRequest = { ...split, id: `split-${key}`, createdAt: demoNow(), link: `https://pago.ro/s/${key}` };
+    store.dispatch({ type: "createSplit", args: { split: created } });
     return created;
   },
   toggleShare(splitId: string, index: number): void {
-    store.update((s) => actions.toggleShare(s, splitId, index));
+    store.dispatch({ type: "toggleShare", args: { splitId, index } });
   },
   removeSplit(id: string): void {
-    store.update((s) => actions.removeSplit(s, id));
+    store.dispatch({ type: "removeSplit", args: { id } });
   },
   createSupportTicket(subject: string, message: string): void {
-    store.update((s) => actions.createSupportTicket(s, { id: `tkt-${Date.now().toString(36)}`, subject, message, createdAt: demoNow(), status: "deschis" }));
+    store.dispatch({ type: "createSupportTicket", args: { ticket: { id: `tkt-${code()}`, subject, message, createdAt: demoNow(), status: "deschis" } } });
   },
   snoozeReminder(eventId: string): void {
-    store.update((s) => actions.snoozeReminder(s, eventId));
+    store.dispatch({ type: "snoozeReminder", args: { eventId } });
   },
   markNotificationsRead(ids: string[]): void {
-    store.update((s) => actions.markNotificationsRead(s, ids));
+    store.dispatch({ type: "markNotificationsRead", args: { ids } });
   },
   finishOnboarding(): void {
-    store.update(actions.finishOnboarding);
+    store.dispatch({ type: "finishOnboarding", args: {} });
   },
 };
 
@@ -200,27 +207,76 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
   );
   const [checkout, setCheckout] = useState<CheckoutRequest | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { status } = useSession();
+  const local = status !== "user";
 
   useEffect(() => {
-    if (!state.payments.some((p) => p.status === "procesare" || p.status === "trimisa")) return;
+    void session.start();
+  }, []);
+
+  useEffect(() => {
+    if (status !== "user") return;
+    let idle = 0;
+    const tick = () => {
+      idle += 1;
+      if (hasPendingWork(store.getSnapshot(), demoNow()) || idle >= IDLE_POLLS) {
+        idle = 0;
+        store.refresh();
+      }
+    };
+    const timer = setInterval(tick, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") store.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [status]);
+
+  useEffect(() => {
+    const push = (items: { text: string; tone: ToastTone }[]) => {
+      if (items.length === 0) return;
+      const at = Date.now();
+      setToasts((list) => [...list, ...items.map((item, index) => ({ id: at + index, ...item }))].slice(-3));
+    };
+    const offChange = store.onRemoteChange((previous, next) => {
+      const closed = next.tickets.filter((t) => t.stage === "stornata" && previous.tickets.some((p) => p.id === t.id && p.stage !== "stornata"));
+      const known = new Set(previous.payments.map((p) => p.id));
+      const started = next.payments.filter((p) => p.auto && !known.has(p.id));
+      push([
+        ...closed.map((t) => ({ text: `Factură stornată: ai economisit ${fmtRon(t.disputedAmount)}`, tone: "success" as const })),
+        ...started.map((p) => ({ text: `Plată automată: ${p.title} · ${fmtRon(p.amount)}`, tone: "info" as const })),
+      ]);
+    });
+    const offProblem = store.onProblem((message) => push([{ text: message, tone: "alert" }]));
+    return () => {
+      offChange();
+      offProblem();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!local || !state.payments.some((p) => p.status === "procesare" || p.status === "trimisa")) return;
     const timer = setTimeout(() => store.update(actions.advancePayments), PAYMENT_STEP_MS);
     return () => clearTimeout(timer);
-  }, [state.payments]);
+  }, [state.payments, local]);
 
   useEffect(() => {
-    if (!state.connections.some((c) => c.status === "sincronizare")) return;
+    if (!local || !state.connections.some((c) => c.status === "sincronizare")) return;
     const timer = setTimeout(() => store.update((s) => actions.finishSync(s, demoNow())), SYNC_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [state.connections]);
+  }, [state.connections, local]);
 
   useEffect(() => {
-    if (!state.tickets.some((t) => t.stage === "trimisa")) return;
+    if (!local || !state.tickets.some((t) => t.stage === "trimisa")) return;
     const timer = setTimeout(() => store.update(actions.advanceTickets), TICKET_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [state.tickets]);
+  }, [state.tickets, local]);
 
   useEffect(() => {
-    if (!state.tickets.some((t) => t.stage === "in_analiza")) return;
+    if (!local || !state.tickets.some((t) => t.stage === "in_analiza")) return;
     const timer = setTimeout(() => {
       const closing = store.getSnapshot().tickets.filter((t) => t.stage === "in_analiza");
       store.update((s) => actions.resolveTickets(s, demoNow()));
@@ -231,10 +287,10 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
       ].slice(-3));
     }, STORNO_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [state.tickets]);
+  }, [state.tickets, local]);
 
   useEffect(() => {
-    if (!state.onboardingDone) return;
+    if (!local || status === "loading" || !state.onboardingDone) return;
     const timer = setTimeout(() => {
       const before = store.getSnapshot().payments.length;
       store.update((s) => actions.runAutopay(s, demoNow()));
@@ -244,13 +300,13 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
       setToasts((list) => [...list, ...started.map((p, index) => ({ id: stamp + index, text: `Plată automată: ${p.title} · ${fmtRon(p.amount)}`, tone: "info" as const }))].slice(-3));
     }, AUTOPAY_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [state.autopay, state.onboardingDone]);
+  }, [state.autopay, state.onboardingDone, local, status]);
 
   useEffect(() => {
-    if (!state.supportTickets.some((t) => t.status === "deschis")) return;
+    if (!local || !state.supportTickets.some((t) => t.status === "deschis")) return;
     const timer = setTimeout(() => store.update(actions.answerSupportTickets), SUPPORT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [state.supportTickets]);
+  }, [state.supportTickets, local]);
 
   useEffect(() => {
     if (toasts.length === 0) return;
@@ -303,7 +359,7 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     closeCheckout: () => setCheckout(null),
     toast: (text, tone = "success") => setToasts((list) => [...list.slice(-2), { id: Date.now(), text, tone }]),
     resetDemo: () => {
-      store.reset();
+      void store.reset();
       setCheckout(null);
       setToasts([]);
     },

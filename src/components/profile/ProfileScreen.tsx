@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BarChart3, Bell, BadgeCheck, CreditCard, Download, History, LifeBuoy, Plug, RotateCcw, Sparkles, Users, Zap } from "lucide-react";
+import { AccountCard } from "@/components/auth/AccountCard";
 import { AvatarImage } from "@/components/shared/Badges";
 import { Card, SectionTitle } from "@/components/shared/Card";
 import { MenuRow } from "@/components/shared/Controls";
@@ -66,6 +67,8 @@ export function ProfileScreen() {
           </div>
         )}
       </Card>
+
+      <AccountCard />
 
       <section className="rounded-card bg-card-gradient p-5 shadow-card">
         <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Puncte Pago</p>
@@ -139,7 +142,7 @@ export function ProfileScreen() {
           </div>
         }
       >
-        <p className="text-sm text-muted">Toate plățile, profilurile și setările făcute în demo se șterg, iar aplicația revine la datele inițiale ale Familiei Popescu.</p>
+        <p className="text-sm text-muted">Toate plățile, profilurile și setările făcute până acum se șterg, iar aplicația revine la datele inițiale ale Familiei Popescu. Contul tău rămâne.</p>
       </Sheet>
     </div>
   );

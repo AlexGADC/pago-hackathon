@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { CheckoutSheet } from "@/components/payments/CheckoutSheet";
 import { Onboarding } from "@/components/onboarding/Onboarding";
 import { BottomNav } from "./BottomNav";
@@ -13,6 +14,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-y-auto px-4 pb-6 pt-2">{children}</main>
         <BottomNav />
         <Onboarding />
+        <AuthGate />
         <CheckoutSheet />
         <Toaster />
       </div>

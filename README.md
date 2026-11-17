@@ -23,6 +23,7 @@ Meniul de jos are patru secțiuni: **Acasă**, **Facturi**, **Abonamente**, **As
 - **Familie:** membrii, cheltuielile împărțite și misiunile cu puncte.
 - **Profiluri:** fiecare locuință cu plățile ei. Poți adăuga un profil nou.
 - **Ajutor:** întrebări frecvente și suport în aplicație.
+- **Cont:** îți faci cont cu e-mail și parolă, iar plățile și setările rămân salvate pe server și le vezi de pe orice dispozitiv. Poți încerca aplicația și fără cont, cu datele păstrate doar pe dispozitiv.
 
 Categoriile au culori fixe: **Facturi** albastru, **Asigurări** verde, **Abonamente** roșu, **Alte plăți** chihlimbar.
 
@@ -50,11 +51,15 @@ npm test
 
 Datele demo se pot readuce la starea inițială din **Profil**, cu „Resetează demo”.
 
+Ai nevoie de Node 24 sau mai nou. Baza de date se creează singură la prima pornire, în `data/pago.db`. Fișierul nu se urcă pe GitHub. Dacă îl ștergi, se șterg toate conturile.
+
 ## Structură
 
 - `src/app/`: paginile aplicației
 - `src/components/`: ecranele și componentele vizuale
-- `src/context/`: starea aplicației și acțiunile ei
+- `src/app/api/`: rutele serverului (conturi, stare, comenzi, export)
+- `src/server/`: baza de date, conturile, validarea cererilor și procesarea plăților
+- `src/context/`: starea aplicației, acțiunile ei și legătura cu serverul
 - `src/data/`: date simulate și cataloage (furnizori, servicii, oferte)
 - `src/lib/`: logica de calcul (calendar, plăți, remindere, abonamente, istoric)
 - `src/types/`: tipurile comune
@@ -63,4 +68,4 @@ Datele demo se pot readuce la starea inițială din **Profil**, cu „Resetează
 
 ## Stadiu
 
-Prototip pentru hackathon. Datele sunt simulate, iar plata este demonstrată, nu procesată. Nu există încă backend, conturi sau conectare reală la furnizori.
+Prototip pentru hackathon. Datele sunt simulate, iar plata este demonstrată, nu procesată. Conturile și datele sunt salvate pe server, într-o bază de date locală. Nu există conectare reală la furnizori și nici procesator de plăți real.

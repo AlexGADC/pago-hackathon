@@ -2,7 +2,7 @@
 
 ## 1. Produsul
 
-Aplicația Pago pentru familie: toate plățile casei într-un singur loc (facturi, abonamente, RCA, rovinietă, ITP, PAD, taxe locale, reîncărcări). Scopul: utilizatorii plătesc direct din aplicație. Prototip cu date simulate. Nu există backend, autentificare sau procesator de plăți real.
+Aplicația Pago pentru familie: toate plățile casei într-un singur loc (facturi, abonamente, RCA, rovinietă, ITP, PAD, taxe locale, reîncărcări). Scopul: utilizatorii plătesc direct din aplicație. Prototip cu date simulate. Are backend propriu (conturi, bază de date, API), dar nu are procesator de plăți real și nici legătură reală cu furnizorii.
 
 ## 2. Ecrane
 
@@ -21,6 +21,7 @@ Bara de sus: iconița de profil din stânga deschide fereastra de sticlă închi
 - **Familie** (`/familie`): membrii, invitațiile, cheltuielile împărțite și misiunile cu puncte.
 - **Alte plăți** (`/servicii`): reîncărcare cartelă, rovinietă, taxă de pod, taxe și impozite locale.
 - **Ajutor** (`/ajutor`): întrebări frecvente și tichete de suport cu răspuns în aplicație.
+- **Cont** (ecranul de la pornire): intrare în cont, cont nou sau „Încearcă fără cont”. Din Profil: schimbarea parolei, ieșirea din cont, ștergerea contului.
 - **Primii pași**: trei ecrane de prezentare la prima deschidere, apoi stări goale care explică ce urmează.
 
 Categorii și culori: **Facturi** albastru, **Asigurări** verde (mașinile și locuința), **Abonamente** roșu, **Alte plăți** chihlimbar.
@@ -32,8 +33,10 @@ Categorii și culori: **Facturi** albastru, **Asigurări** verde (mașinile și 
 - `src/data/catalog.ts`: cataloagele (furnizori, servicii de abonament, oferte de reînnoire, taxe, operatori, întrebări frecvente).
 - `src/context/appState.ts`: forma stării și starea inițială. Cheia din `localStorage` este `pago-home-family:v2`.
 - `src/context/actions.ts`: toate schimbările de stare, ca funcții pure (plată, contestație, abonamente, asigurări, carduri, plăți automate, familie). Aici se adaugă orice acțiune nouă, cu test în `actions.test.ts`.
-- `src/context/store.ts`: stocul extern, citit cu `useSyncExternalStore` și salvat în `localStorage`.
-- `src/context/FamilyContext.tsx`: `FamilyProvider` și `useFamily()`. Pornește cronometrele care avansează plățile, sincronizarea și tichetele. Ține starea de interfață (fereastra de plată, mesajele scurte).
+- `src/context/commands.ts`: lista comenzilor (acțiunile pe care le poate cere aplicația) și pașii automați. Este folosită și de aplicație, și de server.
+- `src/context/store.ts`: stocul extern, citit cu `useSyncExternalStore`. Cu cont, trimite fiecare comandă la server și preia starea de acolo. Fără cont, salvează în `localStorage`.
+- `src/context/session.ts`: starea contului (se încarcă, vizitator, fără cont, cu cont).
+- `src/context/FamilyContext.tsx`: `FamilyProvider` și `useFamily()`. Fără cont, pornește cronometrele care avansează plățile, sincronizarea și tichetele. Cu cont, serverul face acești pași, iar aplicația îi citește periodic. Ține starea de interfață (fereastra de plată, mesajele scurte).
 - `src/lib/payments.ts`: `buildEvents` construiește calendarul din facturi, abonamente, expirări și plăți. `eventState` decide ce acțiune are fiecare plată.
 - `src/lib/reminders.ts`, `src/lib/notifications.ts`: reminderele pe praguri și notificările.
 - `src/lib/subscriptions.ts`, `src/lib/expiry.ts`, `src/lib/autopay.ts`, `src/lib/checkout.ts`, `src/lib/history.ts`, `src/lib/insights.ts`: calculele pe fiecare zonă.
@@ -55,7 +58,27 @@ Toate plățile trec prin `CheckoutSheet`, deschis cu `openCheckout(items)`. Pa�
 
 Totul este simulat: plata avansează singură după câteva secunde.
 
-## 5. Design
+## 5. Backend
+
+Rulează în aceeași aplicație Next.js, fără servicii externe și fără pachete noi.
+
+- `src/server/db.ts`: baza de date SQLite (`node:sqlite`, inclus în Node 24). Fișierul este `data/pago.db`, ignorat de git. Altă cale se dă prin `PAGO_DB_PATH`.
+- `src/server/auth.ts`: conturi și sesiuni. Parola este păstrată ca hash `scrypt` cu sare. Sesiunea este un cookie `HttpOnly`, valabil 30 de zile, păstrat în baza de date doar ca hash.
+- `src/server/validate.ts`: verifică fiecare cerere câmp cu câmp și păstrează doar câmpurile cunoscute.
+- `src/server/stateRepo.ts`: starea fiecărui cont, cu număr de revizie. Aplică o comandă cu aceleași funcții din `actions.ts`, refuză sumele care nu corespund și identificatorii dubli, ține jurnalul de activitate și registrul plăților. Tot aici rulează pașii automați (plata avansează, sincronizarea, stornarea, plata automată).
+- `src/server/http.ts`: răspunsuri, cookie, verificarea originii cererii și limita de încercări.
+
+Rute (`src/app/api/`):
+
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- `PATCH /api/account` (parolă nouă), `DELETE /api/account` (șterge contul)
+- `GET /api/state` (starea contului), `DELETE /api/state` (revine la datele inițiale)
+- `POST /api/commands` cu `{ type, args }`: singura cale de a schimba starea
+- `GET /api/export` (toate datele contului), `GET /api/health`
+
+O acțiune nouă se adaugă în patru locuri: funcția din `actions.ts`, comanda din `commands.ts`, validatorul din `validate.ts` și, dacă trebuie, verificarea din `stateRepo.ts`. Un cont nou pornește cu datele demo ale Familiei Popescu.
+
+## 6. Design
 
 Stil luminos: fundal verde-mentă, carduri aproape albe foarte rotunjite, text verde-negru, accente verzi. Tokenii sunt în `src/app/globals.css`. Nu scrieți culori hex în componente, folosiți tokenii (`bg-surface`, `text-ink`, `text-muted`, `bg-surface-2`, `bg-hero`, `btn-dark`, `btn-blue`, `btn-soft`, `pill`, `pill-primary`, `pill-soft`, `field-input`, `tag-*`, `bg-cat-*`).
 
@@ -63,7 +86,7 @@ Piesele comune sunt în `src/components/shared/`: `Card`, `Sheet`, `PageHeader`,
 
 Limba interfeței este română, ton cald.
 
-## 6. Reguli de lucru
+## 7. Reguli de lucru
 
 - Fără comentarii în cod. Nu adăugați comentarii în fișierele noi sau modificate.
 - Titlurile de commit în engleză, fără linie `Co-Authored-By`.
@@ -74,9 +97,10 @@ Limba interfeței este română, ton cald.
 - Pentru pagini noi sau modificate, verificați și la 375 px (fără depășire pe orizontală).
 - În timpul desenării nu se apelează `Date.now()`, `new Date()` fără argumente sau `Math.random()`. Folosiți `demoNow()` și `uniqueId()` din `src/lib/format.ts`, doar în funcțiile care răspund la apăsări.
 - Paginile cu `[id]` folosesc `generateStaticParams` și `Suspense`. După ce adăugați sau mutați o pagină, rulați `npx next typegen` înainte de `npx tsc --noEmit`.
-- Starea se schimbă doar prin funcțiile din `src/context/actions.ts`.
+- Starea se schimbă doar prin funcțiile din `src/context/actions.ts`, apelate prin comenzile din `src/context/commands.ts`.
+- Codul din `src/server/` nu se importă în componente. Parolele și codurile de sesiune nu se scriu în jurnal și nu ajung în răspunsuri.
 
-## 7. Comenzi
+## 8. Comenzi
 
 ```bash
 npm install
@@ -98,9 +122,10 @@ Teste:
 npm test
 ```
 
-## 8. Ce nu este în prototip
+## 9. Ce nu este în prototip
 
-- Backend, conturi de utilizator, sincronizare între dispozitive.
+- Resetarea parolei prin e-mail și confirmarea adresei de e-mail.
+- Familie cu mai multe conturi pe aceleași date. Membrii sunt doar nume în contul tău.
 - Conectare reală la furnizori și procesator de plăți real.
 - Notificări push, e-mail sau SMS reale. Canalele se aleg în setări, dar reminderele apar doar în aplicație.
 - Chitanțe PDF reale. Chitanța se descarcă drept text.
