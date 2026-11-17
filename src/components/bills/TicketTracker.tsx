@@ -4,8 +4,9 @@ import { Card, Tag } from "@/components/shared/Card";
 import { fmtRon, hasWorkingDayDeadline, legalDeadlineLabel } from "@/lib/disputes";
 import { addDays, fmtDate, fmtDateTime } from "@/lib/format";
 import type { Bill, DisputeTicket } from "@/types/pago";
+import { DisputeDownload } from "./DisputeDownload";
 
-export function TicketTracker({ ticket, bill }: { ticket: DisputeTicket; bill: Bill }) {
+export function TicketTracker({ ticket, bill, download = true }: { ticket: DisputeTicket; bill: Bill; download?: boolean }) {
   const provider = bill.provider;
   const analysing = ticket.stage === "in_analiza" || ticket.stage === "stornata";
   const closed = ticket.stage === "stornata";
@@ -45,6 +46,11 @@ export function TicketTracker({ ticket, bill }: { ticket: DisputeTicket; bill: B
         />
       </ol>
       <p className="mt-4 rounded-2xl bg-surface-2 p-3 text-xs leading-relaxed text-muted">{ticket.message}</p>
+      {download && (
+        <div className="mt-3 flex justify-end">
+          <DisputeDownload ticket={ticket} bill={bill} />
+        </div>
+      )}
     </Card>
   );
 }

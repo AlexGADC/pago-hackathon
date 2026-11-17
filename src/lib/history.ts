@@ -131,18 +131,3 @@ export function historyCsv(records: PaymentRecord[]): string {
   ]);
   return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
 }
-
-export function receiptText(record: PaymentRecord): string {
-  return [
-    "Pago · Chitanță demonstrativă",
-    "",
-    `Furnizor: ${record.title}`,
-    `Apare pe extras ca: ${record.payee}`,
-    `Suma: ${record.amount.toFixed(2)} RON`,
-    `Comision: ${record.fee.toFixed(2)} RON`,
-    `Metodă: ${record.methodLabel}`,
-    `Status: ${STATUS_LABEL[record.status]}`,
-    `Data: ${record.createdAt.slice(0, 16).replace("T", " ")}`,
-    `Referință: ${record.reference}`,
-  ].join("\n");
-}

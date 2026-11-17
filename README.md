@@ -11,10 +11,10 @@ Aducem cât mai mulți utilizatori să plătească direct din aplicația Pago: f
 Meniul de jos are patru secțiuni: **Acasă**, **Facturi**, **Abonamente**, **Asigurări**. Profilul se schimbă din iconița de sus, în stânga. Clopoțelul din dreapta deschide notificările.
 
 - **Acasă:** calendarul lunii cu toate plățile, suma totală și suma rămasă, reminderele și lista plăților din lună. Poți plăti una câte una sau pe toate odată. Apăsând pe o zi vezi plățile ei și totalul.
-- **Facturi:** facturile de la furnizorii conectați, verificate față de media ultimelor 12 luni. Plătești din aplicație, trimiți indexul, activezi plata automată sau împarți factura cu familia. Dacă o factură pare greșită, o contești și plătești doar suma corectă.
+- **Facturi:** facturile de la furnizorii conectați, verificate față de media ultimelor 12 luni. Plătești din aplicație, trimiți indexul, activezi plata automată sau împarți factura cu familia. Dacă o factură pare greșită, o contești și plătești doar suma corectă, iar sesizarea o poți descărca drept PDF.
 - **Abonamente:** toate abonamentele, lunare, trimestriale sau anuale. Le adaugi, le pui pe pauză, le anulezi sau le reactivezi. Aplicația te anunță când se termină un trial, când un abonament se scumpește și când nu l-ai mai folosit.
 - **Asigurări:** RCA, rovinietă, ITP și PAD, cu zilele rămase. Reînnoiești din aplicație și compari ofertele.
-- **Plata:** un singur ecran pentru orice plată, cu cardul ales, punctele de reducere și comisionul afișat. Urmărești plata pas cu pas până ajunge la furnizor și primești chitanță. Dacă plata eșuează, vezi motivul și reîncerci.
+- **Plata:** un singur ecran pentru orice plată, cu cardul ales, punctele de reducere și comisionul afișat. Urmărești plata pas cu pas până ajunge la furnizor și primești chitanță, pe care o poți descărca drept PDF. Dacă plata eșuează, vezi motivul și reîncerci.
 - **Plăți automate:** cu limită de siguranță, anunț înainte de fiecare plată și jurnal.
 - **Istoric:** toate plățile, cu căutare, filtre și export.
 - **Notificări și remindere:** cu 7 zile, 3 zile și în ziua scadenței. Pragurile se schimbă din setări.
@@ -62,6 +62,8 @@ Ai nevoie de Node 24 sau mai nou. Baza de date se creează singură la prima por
 - `src/context/`: starea aplicației, acțiunile ei și legătura cu serverul
 - `src/data/`: date simulate și cataloage (furnizori, servicii, oferte)
 - `src/lib/`: logica de calcul (calendar, plăți, remindere, abonamente, istoric)
+- `src/lib/pdf/`: generarea documentelor PDF (chitanța și sesizarea)
+- `public/fonts/`: fontul folosit în documentele PDF
 - `src/types/`: tipurile comune
 - `public/avatars/`: pozele de profil
 - `CLAUDE.md`: specificația completă și regulile de lucru
